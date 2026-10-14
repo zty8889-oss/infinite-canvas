@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>无限画布 · Infinite Canvas</title>
+<style>
+  :root{
+    --grid:#e9edf2; --grid2:#dbe2ea; --bg:#f7f9fc;
+    --panel:#ffffff; --line:#d7dee8; --txt:#1f2733; --muted:#7b8798;
+    --accent:#3b82f6; --shadow:0 6px 24px rgba(20,30,50,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--txt)}
+  #viewport{
+    position:fixed;inset:0;background-color:var(--bg);
+    background-image:
+      linear-gradient(to right, var(--grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid) 1px, transparent 1px),
+      linear-gradient(to right, var(--grid2) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid2) 1px, transparent 1px);
+    cursor:grab;touch-action:none;overflow:hidden;
+  }
+  #viewport.panning{cursor:grabbing}
+  #viewport.linkmode{cursor:crosshair}
+  #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+  #edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+  #edges path{fill:none;stroke:#8aa2bd;stroke-width:2;vector-effect:non-scaling-stroke}
+  #edges path.temp{stroke:var(--accent);stroke-dasharray:6 5}
+  #nodes{position:absolute;left:0;top:0}
+
+  .node{position:absolute;border-radius:10px;box-shadow:var(--shadow);background:#fff;
+        border:1px solid rgba(0,0,0,.06);user-select:none}
+  .node.selected{outline:2px solid var(--accent);outline-offset:2px}
+  .node.note{width:200px;min-height:120px;padding:10px 12px;background:#fff59d;overflow:auto}
+  .node.text{min-width:60px;min-height:32px;padding:6px 8px;background:transparent;box-shadow:none;border:1px dashed transparent}
+  .node.text.selected{border-color:var(--accent)}
+  .node.img{width:240px;padding:0;overflow:hidden;background:#fff}
+  .node .body{width:100%;height:100%;outline:none;white-space:pre-wrap;word-break:break-word;
+              line-height:1.45;font-size:14px;min-height:100%}
+  .node.img img{display:block;width:100%;height:auto;pointer-events:none}
+  .node .handle{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:50%;
+                background:#fff;border:2px solid var(--accent);cursor:nwse-resize;display:none}
+  .node.selected .handle{display:block}
+  .node .port{position:absolute;right:-8px;top:50%;margin-top:-8px;width:16px;height:16px;border-radius:50%;
+              background:var(--accent);opacity:0;cursor:crosshair;transition:opacity .12s}
+  .node:hover .port,.node.selected .port{opacity:.9}
+  .node .del{position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;
+             background:#ef4444;color:#fff;font-size:13px;line-height:20px;text-align:center;
+             cursor:pointer;display:none;border:none}
+  .node.selected .del{display:block}
+
+  #toolbar{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:20;display:flex;gap:6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:var(--shadow)}
+  #toolbar button{border:1px solid transparent;background:#f1f4f9;border-radius:8px;padding:7px 11px;font-size:13px;
+    cursor:pointer;color:var(--txt);white-space:nowrap}
+  #toolbar button:hover{background:#e6ecf5}
+  #toolbar button.active{background:var(--accent);color:#fff}
+  #toolbar .sep{width:1px;background:var(--line);margin:2px 2px}
+  #zoominfo{position:fixed;right:14px;bottom:14px;z-index:20;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:6px 10px;font-size:13px;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center}
+  #zoominfo button{border:none;background:#f1f4f9;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:15px}
+  #hint{position:fixed;left:14px;bottom:14px;z-index:20;color:var(--muted);font-size:12px;background:rgba(255,255,255,.75);
+    border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:60vw}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="world">
+    <svg id="edges"></svg>
+    <div id="nodes"></div>
+  </div>
+</div>
+
+<div id="toolbar">
+  <button data-act="note">＋便利贴</button>
+  <button data-act="text">± 文本</button>
+  <button data-act="image">🖼 图片</button>
+  <div class="sep"></div>
+  <button data-act="link">🔗 连线</button>
+  <button data-act="delete">🗑 删除</button>
+  <div class="sep"></div>
+  <button data-act="fit">⤢ 适应</button>
+  <button data-act="export">导出</button>
+  <button data-act="import">导入</button>
+  <button data-act="clear">清空</button>
+</div>
+
+<div id="zoominfo">
+  <button id="zin">＋</button><span id="ztext">100%</span><button id="zout">－</button>
+</div>
+<div id="hint">拖空白=平移 · 滚轮/捏合=缩放 · 双击空白=新建便利贴 · 拖圆点连线 · 选中按 Delete 删除</div>
+<input id="fileimg" type="file" accept="image/*" multiple hidden>
+<input id="filejson" type="file" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+  "use strict";
+  var STORE_KEY = "infinite-canvas-v1";
+  var vp = document.getElementById("viewport");
+  var world = document.getElementById("world");
+  var edgesEl = document.getElementById("edges");
+  var nodesEl = document.getElementById("nodes");
+  var ztext = document.getElementById("ztext");
+
+  var state = { nodes:[], edges:[], view:{x:0,y:0,s:1} };
+  var mode = "select";           // select | link
+  var selectedId = null;
+  var uid = 0;
+  var GRID = 24;
+
+  function id(){ return "n" + (Date.now().toString(36)) + (uid++).toString(36); }
+
+  /* ---------- transforms ---------- */
+  function applyView(){
+    world.style.transform = "translate(" + state.view.x + "px," + state.view.y + "px) scale(" + state.view.s + ")";
+    var g = GRID * state.view.s;
+    vp.style.backgroundSize = g+"px "+g+"px, "+g+"px "+g+"px, "+(g*4)+"px "+(g*4)+"px, "+(g*4)+"px "+(g*4)+"px";
+    vp.style.backgroundPosition =
+      state.view.x+"px "+state.view.y+"px, "+state.view.x+"px "+state.view.y+"px, "+
+      state.view.x+"px "+state.view.y+"px, "+state.view.x+"px "+state.view.y+"px";
+    ztext.textContent = Math.round(state.view.s*100) + "%";
+  }
+  function screenToWorld(cx, cy){
+    return { x:(cx - state.view.x)/state.view.s, y:(cy - state.view.y)/state.view.s };
+  }
+  function zoomAt(cx, cy, factor){
+    var s0 = state.view.s;
+    var s1 = Math.min(4, Math.max(0.15, s0*factor));
+    if (s1 === s0) return;
+    var w = screenToWorld(cx, cy);
+    state.view.s = s1;
+    state.view.x = cx - w.x*s1;
+    state.view.y = cy - w.y*s1;
+    applyView();
+    save();
+  }
+
+  /* ---------- render ---------- */
+  function renderNode(n){
+    var el = document.createElement("div");
+    el.className = "node " + n.type;
+    el.dataset.id = n.id;
+    el.style.left = n.x+"px"; el.style.top = n.y+"px";
+    el.style.width = n.w+"px";
+    if (n.type !== "text") el.style.height = n.h+"px";
+    if (n.color && n.type === "note") el.style.background = n.color;
+
+    if (n.type === "image"){
+      var img = document.createElement("img");
+      img.src = n.src; img.draggable = false;
+      el.appendChild(img);
+    } else {
+      var body = document.createElement("div");
+      body.className = "body"; body.contentEditable = "true";
+      body.textContent = n.text || "";
+      el.appendChild(body);
+      body.addEventListener("input", function(){ n.text = body.innerText; saveSoon(); });
+      // stop drag while editing
+      body.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+    }
+    el.appendChild(mk("div","handle"));
+    el.appendChild(mk("div","port"));
+    var del = document.createElement("button");
+    del.className="del"; del.textContent="×";
+    del.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+    del.addEventListener("click", function(e){ e.stopPropagation(); removeNode(n.id); });
+    el.appendChild(del);
+
+    el.addEventListener("pointerdown", onNodeDown);
+    if (n.type !== "text") el.addEventListener("pointerup", function(){
+      n.h = Math.max(40, el.offsetHeight || n.h); n.w = Math.max(60, el.offsetWidth || n.w); saveSoon();
+    });
+    return el;
+  }
+  function mk(tag, cls){ var d=document.createElement(tag); d.className=cls; return d; }
+
+  function renderAll(){
+    nodesEl.innerHTML = "";
+    state.nodes.forEach(function(n){ nodesEl.appendChild(renderNode(n)); });
+    drawEdges();
+  }
+  function nodeById(i){ for (var k=0;k<state.nodes.length;k++) if (state.nodes[k].id===i) return state.nodes[k]; return null; }
+
+  function drawEdges(){
+    var html = "";
+    state.edges.forEach(function(ed){
+      var a = nodeById(ed.from), b = nodeById(ed.to);
+      if (!a || !b) return;
+      var x1=a.x+a.w/2, y1=a.y+a.h/2, x2=b.x+b.w/2, y2=b.y+b.h/2;
+      html += '<path d="'+curve(x1,y1,x2,y2)+'" marker-end="url(#arrow)"/>';
+    });
+    html += '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8aa2bd"/></marker></defs>';
+    edgesEl.innerHTML = html;
+  }
+  function curve(x1,y1,x2,y2){
+    var dx = Math.max(40, Math.abs(x2-x1)*0.5);
+    return "M"+x1+","+y1+" C"+(x1+dx)+","+y1+" "+(x2-dx)+","+y2+" "+x2+","+y2;
+  }
+
+  /* ---------- selection ---------- */
+  function select(i){
+    selectedId = i;
+    [].forEach.call(nodesEl.children, function(el){
+      el.classList.toggle("selected", el.dataset.id === i);
+    });
+  }
+
+  /* ---------- add / remove ---------- */
+  function addNode(partial){
+    var n = Object.assign({ id:id(), type:"note", x:0, y:0, w:200, h:120, text:"", color:"#fff59d" }, partial);
+    state.nodes.push(n); renderAll(); saveSoon(); select(n.id); return n;
+  }
+  function addNoteAt(cx, cy){
+    var w = screenToWorld(cx, cy);
+    var colors = ["#fff59d","#c8f7c5","#cde4ff","#ffd6e7","#ffe0b3"];
+    addNode({ type:"note", x:w.x-100, y:w.y-60, w:200, h:120, text:"双击输入…",
+              color:colors[state.nodes.length % colors.length] });
+  }
+  function removeNode(nid){
+    state.nodes = state.nodes.filter(function(n){ return n.id!==nid; });
+    state.edges = state.edges.filter(function(e){ return e.from!==nid && e.to!==nid; });
+    if (selectedId===nid) selectedId=null;
+    renderAll(); save();
+  }
+
+  /* ---------- pointer interactions ---------- */
+  var drag = null;   // {type:'pan'|'move'|'resize'|'link', ...}
+  vp.addEventListener("pointerdown", function(e){
+    if (e.target.closest("#toolbar") || e.target.closest("#zoominfo")) return;
+    var nodeEl = e.target.closest(".node");
+    if (!nodeEl){
+      // background -> pan (or create note handled by dblclick)
+      drag = { type:"pan", sx:e.clientX, sy:e.clientY, ox:state.view.x, oy:state.view.y };
+      vp.classList.add("panning");
+      select(null);
+      vp.setPointerCapture(e.pointerId);
+    }
+  });
+
+  function onNodeDown(e){
+    e.stopPropagation();
+    var el = e.currentTarget;
+    var n = nodeById(el.dataset.id);
+    if (!n) return;
+    // link port
+    if (e.target.classList.contains("port") || mode === "link"){
+      drag = { type:"link", from:n.id, el:el };
+      vp.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (e.target.classList.contains("handle")){
+      drag = { type:"resize", n:n, sx:e.clientX, sy:e.clientY, w0:n.w, h0:n.h, el:el };
+      vp.setPointerCapture(e.pointerId);
+      select(n.id);
+      return;
+    }
+    if (e.target.classList.contains("body") && e.target.isContentEditable){
+      // clicking inside text: allow editing, but still allow moving via drag on edges
+      select(n.id);
+      return;
+    }
+    drag = { type:"move", n:n, sx:e.clientX, sy:e.clientY, x0:n.x, y0:n.y, el:el };
+    vp.setPointerCapture(e.pointerId);
+    select(n.id);
+  }
+
+  vp.addEventListener("pointermove", function(e){
+    if (!drag) return;
+    if (drag.type === "pan"){
+      state.view.x = drag.ox + (e.clientX - drag.sx);
+      state.view.y = drag.oy + (e.clientY - drag.sy);
+      applyView();
+    } else if (drag.type === "move"){
+      drag.n.x = drag.x0 + (e.clientX - drag.sx)/state.view.s;
+      drag.n.y = drag.y0 + (e.clientY - drag.sy)/state.view.s;
+      drag.el.style.left = drag.n.x+"px"; drag.el.style.top = drag.n.y+"px";
+      drawEdges();
+    } else if (drag.type === "resize"){
+      drag.n.w = Math.max(60, drag.w0 + (e.clientX - drag.sx)/state.view.s);
+      drag.n.h = Math.max(40, drag.h0 + (e.clientY - drag.sy)/state.view.s);
+      drag.el.style.width = drag.n.w+"px"; drag.el.style.height = drag.n.h+"px";
+      drawEdges();
+    } else if (drag.type === "link"){
+      var a = nodeById(drag.from);
+      var w = screenToWorld(e.clientX, e.clientY);
+      edgesEl.innerHTML = '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8aa2bd"/></marker></defs>'+
+        '<path class="temp" d="'+curve(a.x+a.w/2, a.y+a.h/2, w.x, w.y)+'" marker-end="url(#arrow)"/>';
+    }
+  });
+
+  function endDrag(e){
+    if (!drag){ return; }
+    if (drag.type === "link"){
+      var target = document.elementFromPoint(e.clientX, e.clientY);
+      var tEl = target && target.closest ? target.closest(".node") : null;
+      if (tEl && tEl.dataset.id !== drag.from){
+        state.edges.push({ id:id(), from:drag.from, to:tEl.dataset.id });
+      }
+      drawEdges(); save();
+    } else if (drag.type !== "pan"){
+      save();
+    }
+    if (drag.type === "pan") vp.classList.remove("panning");
+    drag = null;
+  }
+  vp.addEventListener("pointerup", endDrag);
+  vp.addEventListener("pointercancel", endDrag);
+
+  /* wheel zoom / pan */
+  vp.addEventListener("wheel", function(e){
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+      var f = Math.pow(1.0015, -e.deltaY);
+      zoomAt(e.clientX, e.clientY, f);
+    } else {
+      state.view.x -= e.deltaX; state.view.y -= e.deltaY; applyView();
+    }
+  }, { passive:false });
+
+  /* pinch zoom */
+  var pinch = null;
+  vp.addEventListener("touchstart", function(e){
+    if (e.touches.length === 2){
+      var t = e.touches;
+      pinch = { d: Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY) };
+    }
+  }, { passive:true });
+  vp.addEventListener("touchmove", function(e){
+    if (pinch && e.touches.length === 2){
+      var t = e.touches;
+      var d = Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+      zoomAt((t[0].clientX+t[1].clientX)/2, (t[0].clientY+t[1].clientY)/2, d/pinch.d);
+      pinch.d = d;
+    }
+  }, { passive:true });
+  vp.addEventListener("touchend", function(){ pinch = null; });
+
+  /* double click empty -> note */
+  vp.addEventListener("dblclick", function(e){
+    if (e.target.closest(".node") || e.target.closest("#toolbar")) return;
+    addNoteAt(e.clientX, e.clientY);
+  });
+
+  /* delete key */
+  document.addEventListener("keydown", function(e){
+    if ((e.key === "Delete" || e.key === "Backspace") && selectedId){
+      var ae = document.activeElement;
+      if (ae && ae.isContentEditable) return;
+      e.preventDefault(); removeNode(selectedId);
+    }
+  });
+
+  /* toolbar */
+  document.getElementById("toolbar").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if (!b) return;
+    var act = b.dataset.act;
+    var center = { x: innerWidth/2, y: innerHeight/2 };
+    if (act === "note") addNoteAt(center.x, center.y);
+    else if (act === "text") addNode({ type:"text", x:screenToWorld(center.x,center.y).x-80, y:screenToWorld(center.x,center.y).y-16, w:160, h:32, text:"文本" });
+    else if (act === "image") document.getElementById("fileimg").click();
+    else if (act === "link"){ mode = (mode==="link"?"select":"link"); vp.classList.toggle("linkmode", mode==="link"); b.classList.toggle("active", mode==="link"); }
+    else if (act === "delete"){ if (selectedId) removeNode(selectedId); }
+    else if (act === "fit") fitView();
+    else if (act === "export") exportJSON();
+    else if (act === "import") document.getElementById("filejson").click();
+    else if (act === "clear"){ if (confirm("清空画布？不可撤销")){ state.nodes=[]; state.edges=[]; selectedId=null; renderAll(); save(); } }
+  });
+  document.getElementById("zin").onclick = function(){ zoomAt(innerWidth/2, innerHeight/2, 1.2); };
+  document.getElementById("zout").onclick = function(){ zoomAt(innerWidth/2, innerHeight/2, 1/1.2); };
+
+  document.getElementById("fileimg").addEventListener("change", function(e){
+    [].forEach.call(e.target.files, function(f){
+      var r = new FileReader();
+      r.onload = function(){
+        var im = new Image();
+        im.onload = function(){
+          var maxW = 320, w = im.width, h = im.height;
+          if (w > maxW){ h = h*maxW/w; w = maxW; }
+          var c = screenToWorld(innerWidth/2, innerHeight/2);
+          addNode({ type:"image", x:c.x-w/2, y:c.y-h/2, w:w, h:h, src:r.result });
+        };
+        im.src = r.result;
+      };
+      r.readAsDataURL(f);
+    });
+    e.target.value = "";
+  });
+
+  document.getElementById("filejson").addEventListener("change", function(e){
+    var f = e.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try{
+        var d = JSON.parse(r.result);
+        state.nodes = d.nodes || []; state.edges = d.edges || [];
+        if (d.view) state.view = d.view;
+        renderAll(); applyView(); save();
+      }catch(err){ alert("导入失败："+err.message); }
+    };
+    r.readAsText(f); e.target.value = "";
+  });
+
+  function fitView(){
+    if (!state.nodes.length){ state.view={x:0,y:0,s:1}; applyView(); return; }
+    var minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    state.nodes.forEach(function(n){
+      minx=Math.min(minx,n.x); miny=Math.min(miny,n.y);
+      maxx=Math.max(maxx,n.x+n.w); maxy=Math.max(maxy,n.y+n.h);
+    });
+    var pad=80, W=innerWidth-2*pad, H=innerHeight-2*pad;
+    var s = Math.min(2, Math.min(W/(maxx-minx), H/(maxy-miny)));
+    state.view.s = s;
+    state.view.x = pad - minx*s + (W-(maxx-minx)*s)/2;
+    state.view.y = pad - miny*s + (H-(maxy-miny)*s)/2;
+    applyView(); save();
+  }
+
+  function exportJSON(){
+    var data = JSON.stringify(state, null, 2);
+    var blob = new Blob([data], { type:"application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "infinite-canvas-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---------- persistence ---------- */
+  var t = null;
+  function saveSoon(){ clearTimeout(t); t = setTimeout(save, 400); }
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(err){ /* likely image too large for quota */ }
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY); if (!raw) return false;
+      var d = JSON.parse(raw);
+      state.nodes = d.nodes || []; state.edges = d.edges || [];
+      if (d.view) state.view = d.view;
+      return true;
+    }catch(err){ return false; }
+  }
+
+  /* ---------- boot ---------- */
+  if (!load()){
+    state.view = { x: innerWidth/2 - 200, y: innerHeight/2 - 120, s:1 };
+    addNode({ type:"note", x:0, y:0, w:220, h:150, text:"欢迎使用无限画布 🐾\n\n· 拖空白平移\n· 滚轮缩放\n· 双击空白新建\n· 拖右侧圆点连线", color:"#cde4ff" });
+    var n2 = addNode({ type:"note", x:300, y:120, w:200, h:120, text:"第二张卡片，拖我试试~", color:"#fff59d" });
+    select(null);
+    state.edges.push({ id:id(), from:state.nodes[0].id, to:n2.id });
+  }
+  renderAll();
+  applyView();
+})();
+</script>
+</body>
+</html>

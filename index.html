@@ -395,7 +395,18 @@ function newNote(cx,cy){var w=cx!=null?s2w(cx,cy):centerWorld();
 
 /* ---------- interactions ---------- */
 var drag=null;
+var spacePan=false;
+document.addEventListener("keydown",function(e){var a=document.activeElement||{};if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(a.tagName||"")&&!a.isContentEditable){spacePan=true;e.preventDefault();}});
+document.addEventListener("keyup",function(e){if(e.code==="Space")spacePan=false;});
+window.addEventListener("blur",function(){spacePan=false;});
 function startDrag(type,extra,e){drag=Object.assign({type:type,sx:e.clientX,sy:e.clientY},extra);vp.setPointerCapture(e.pointerId);}
+vp.addEventListener("pointerdown",function(e){
+  if(e.target.closest("#toolbar")||e.target.closest("#zoominfo"))return;
+  if(!spacePan&&e.button!==1)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  drag={type:"pan",sx:e.clientX,sy:e.clientY,ox:state.view.x,oy:state.view.y};
+  vp.classList.add("panning");vp.setPointerCapture(e.pointerId);
+},{capture:true});
 function onCardDown(e){
   var el=e.currentTarget, n=nodeById(el.dataset.id);
   if(!n)return;

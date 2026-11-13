@@ -6,10 +6,10 @@
 <title>AI漫剧分镜台 · Infinite Canvas</title>
 <style>
   :root{
-    --grid:#e9edf2; --grid2:#dbe2ea; --bg:#f5f7fb;
-    --panel:#fff; --line:#d7dee8; --txt:#1f2733; --muted:#7b8798;
-    --accent:#3b82f6; --shot:#3b82f6; --char:#8b5cf6; --scene:#14b8a6;
-    --shadow:0 6px 20px rgba(20,30,50,.10);
+    --grid:#e7ebe8; --grid2:#d7ded9; --bg:#f1f3f1;
+    --panel:#fbfcfb; --line:#d9dfdc; --txt:#202724; --muted:#77827c;
+    --accent:#317f70; --shot:#587d91; --char:#8c7199; --scene:#4b8b7c;
+    --shadow:0 8px 24px rgba(25,36,31,.09);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;margin:0;overflow:hidden;color:var(--txt);
@@ -89,6 +89,27 @@
     background:#111827;color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;
     transition:opacity .2s,transform .2s;pointer-events:none}
   #toast.on{opacity:.95;transform:translateX(-50%) translateY(0)}
+  /* Studio chrome: keep the canvas open while giving controls a clear home. */
+  #toolbar{left:14px;right:14px;top:12px;transform:none;max-width:none;flex-wrap:nowrap;
+    justify-content:flex-start;overflow-x:auto;scrollbar-width:thin;gap:6px;padding:7px 10px;
+    border-radius:10px;background:rgba(251,252,251,.96);backdrop-filter:blur(14px);
+    box-shadow:0 5px 18px rgba(25,36,31,.08)}
+  #toolbar::before{content:"STORYBOARD  /  创作画布";flex:0 0 auto;padding:0 14px 0 4px;
+    margin-right:4px;border-right:1px solid var(--line);font-size:11px;font-weight:750;
+    letter-spacing:.08em;color:#43514a;white-space:nowrap}
+  #toolbar button{border-radius:7px;padding:7px 10px;transition:background .15s,border-color .15s,transform .15s}
+  #toolbar button:active{transform:translateY(1px)}
+  #toolbar button.active{background:var(--accent)}
+  .card{border-radius:10px;box-shadow:0 8px 26px rgba(25,36,31,.11);transition:box-shadow .16s}
+  .card:hover{box-shadow:0 12px 30px rgba(25,36,31,.15)}
+  .card.selected{outline-color:var(--accent)}
+  .body{gap:8px}
+  .card input,.card select,.card textarea{border-radius:7px}
+  #zoominfo{border-radius:9px;background:rgba(251,252,251,.96);backdrop-filter:blur(12px)}
+  #hint{border-radius:8px;background:rgba(251,252,251,.9);backdrop-filter:blur(10px)}
+  @media(max-width:700px){#toolbar{left:8px;right:8px;top:8px;max-width:none;justify-content:flex-start}
+    #toolbar::before{font-size:10px;padding-right:9px}#toolbar button{font-size:12px;padding:7px 9px}
+    #hint{max-width:72vw;font-size:10px;bottom:8px;left:8px}#zoominfo{right:8px;bottom:8px}}
 </style>
 </head>
 <body>

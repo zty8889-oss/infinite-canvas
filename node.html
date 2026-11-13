@@ -600,6 +600,17 @@ function select(i){
   [].forEach.call(nodesEl.children,function(e){e.classList.toggle("selected",e.dataset.id===i);});
   if(i)openInspector(nodeById(i));else closeInspector();
 }
+var spacePan=false;
+document.addEventListener("keydown",function(e){var a=document.activeElement||{};if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(a.tagName||"")&&!a.isContentEditable){spacePan=true;e.preventDefault();}});
+document.addEventListener("keyup",function(e){if(e.code==="Space")spacePan=false;});
+window.addEventListener("blur",function(){spacePan=false;});
+vp.addEventListener("pointerdown",function(e){
+  if(e.target.closest("#toolbar")||e.target.closest("#inspector")||e.target.closest("#menu")||e.target.closest("#zoominfo")||e.target.closest("#board"))return;
+  if(!spacePan&&e.button!==1)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  drag={type:"pan",sx:e.clientX,sy:e.clientY,ox:state.view.x,oy:state.view.y};
+  vp.classList.add("panning");vp.setPointerCapture(e.pointerId);
+},{capture:true});
 function onNodeDown(e){
   var c=e.currentTarget,n=nodeById(c.dataset.id);if(!n)return;
   if(e.target.closest(".run,.del,.col"))return;

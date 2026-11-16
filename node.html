@@ -52,6 +52,9 @@
   .nd .run:hover{background:#0b1220}
   .nd .run[disabled]{opacity:.5;cursor:default}
   .nd .prov{margin-left:auto;font-size:10px;color:#94a3b8;align-self:center;padding-right:8px}
+  .nd .nhandle{position:absolute;right:-7px;bottom:-7px;width:16px;height:16px;border-radius:4px;background:#fff;
+    border:2px solid var(--accent);box-shadow:0 1px 4px rgba(15,23,42,.25);cursor:nwse-resize;display:none;z-index:6;touch-action:none}
+  .nd:hover .nhandle,.nd.selected .nhandle{display:block}
   .nd.collapsed .bd,.nd.collapsed .ft{display:none}
   .port{position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;border:2.5px solid #8ea7c2;
     top:50%;margin-top:-7px;cursor:crosshair;z-index:5}
@@ -436,13 +439,72 @@ registerProvider(makeHttp({
   models:{},
   endpoint:function(){throw new Error("Liblib 需 HMAC-SHA1 签名，请在此实现 endpoint");}
 }));
-registerProvider(makeHttp({
-  id:"comfy",label:"ComfyUI 本地（模板）",available:false,kinds:["image","video"],
-  defaults:{baseUrl:"http://127.0.0.1:8188",workflow:""},
-  fields:[{k:"baseUrl",l:"Base URL"},{k:"workflow",l:"工作流JSON",t:"textarea"}],
-  models:{},
-  endpoint:function(){throw new Error("ComfyUI 需映射工作流节点，请在此实现 endpoint/poll");}
-}));
+registerProvider({
+  id:"comfy",label:"ComfyUI 本地",kinds:["image"],
+  help:"支持内置文生图工作流，也可填写 ComfyUI 的 API 格式工作流。自定义 JSON 可用 {{prompt}}、{{negative_prompt}}、{{checkpoint}}、{{width}}、{{height}}、{{seed}}、{{steps}}、{{cfg}} 作为输入占位符。",
+  defaults:{baseUrl:"http://127.0.0.1:8188",checkpoint:"",negativePrompt:"low quality, blurry, bad anatomy, extra fingers, watermark, text",workflow:""},
+  fields:[
+    {k:"baseUrl",l:"ComfyUI 地址"},
+    {k:"checkpoint",l:"默认模型（留空自动选择）"},
+    {k:"negativePrompt",l:"反向提示词",t:"textarea"},
+    {k:"workflow",l:"自定义 API 工作流 JSON（留空使用内置工作流）",t:"textarea"}
+  ],
+  async run(ctx){
+    var cfg=ctx.cfg||{},base=(cfg.baseUrl||"http://127.0.0.1:8188").trim().replace(/\/+$/,""),origin;
+    try{origin=new URL(base).origin;}catch(_){throw new Error("ComfyUI 地址无效，请填写例如 http://127.0.0.1:8188");}
+    if(!/^https?:$/.test(new URL(base).protocol))throw new Error("ComfyUI 地址必须使用 HTTP 或 HTTPS");
+    async function request(path,options){
+      var response;
+      try{response=await fetch(base+path,options||{});}catch(e){
+        throw new Error("无法访问本机 ComfyUI（"+base+"）。请确认 ComfyUI 正在运行；若页面来自 GitHub Pages，还需在 ComfyUI 中仅允许网页来源 https://zty8889-oss.github.io。浏览器的跨域或本地网络权限也可能拦截请求。");
+      }
+      if(!response.ok){var detail="";try{detail=(await response.text()).slice(0,500);}catch(_){}
+        if(response.status===403)throw new Error("ComfyUI 拒绝了跨域请求。需在 ComfyUI 启动参数中允许网页来源 https://zty8889-oss.github.io（不要使用 *），然后重启 ComfyUI。"+(detail?"："+detail:""));
+        throw new Error("ComfyUI 返回 HTTP "+response.status+(detail?"："+detail:""));
+      }
+      return response.json();
+    }
+    var info=await request("/object_info/CheckpointLoaderSimple"),nodeInfo=info&&info.CheckpointLoaderSimple;
+    var choices=nodeInfo&&nodeInfo.input&&nodeInfo.input.required&&nodeInfo.input.required.ckpt_name&&nodeInfo.input.required.ckpt_name[0]||[];
+    if(!choices.length)throw new Error("ComfyUI 没有可用的 checkpoint 模型，请先安装模型并刷新页面");
+    var checkpoint=ctx.model||cfg.checkpoint||choices.find(function(x){return /meina|animagine|anime/i.test(x);})||choices[0];
+    if(choices.indexOf(checkpoint)<0)throw new Error("找不到模型「"+checkpoint+"」。可用模型："+choices.slice(0,8).join("、"));
+    var ratio=(ctx.params&&ctx.params.ratio)||"1:1",dims={"1:1":[512,512],"3:4":[512,680],"4:3":[680,512],"9:16":[432,768],"16:9":[768,432]},size=dims[ratio]||dims["1:1"];
+    var seed=Math.floor(Math.random()*100000000000000),steps=Math.max(1,Math.min(60,parseInt(cfg.steps,10)||20)),cfgScale=Math.max(1,Math.min(20,parseFloat(cfg.cfgScale)||7));
+    var promptGraph;
+    if(cfg.workflow&&cfg.workflow.trim()){
+      try{promptGraph=JSON.parse(cfg.workflow);}catch(e){throw new Error("自定义工作流 JSON 格式错误："+e.message);}
+      if(promptGraph&&promptGraph.prompt)promptGraph=promptGraph.prompt;
+      var replacements={"{{prompt}}":ctx.prompt||"","{{negative_prompt}}":cfg.negativePrompt||"","{{checkpoint}}":checkpoint,"{{width}}":size[0],"{{height}}":size[1],"{{seed}}":seed,"{{steps}}":steps,"{{cfg}}":cfgScale};
+      function substitute(v){if(typeof v==="string")return replacements[v]!==undefined?replacements[v]:v;if(Array.isArray(v))return v.map(substitute);if(v&&typeof v==="object"){Object.keys(v).forEach(function(k){v[k]=substitute(v[k]);});return v;}return v;}
+      promptGraph=substitute(promptGraph);
+      if(!promptGraph||typeof promptGraph!=="object"||!Object.keys(promptGraph).length)throw new Error("自定义工作流中没有 ComfyUI API 节点");
+    }else{
+      promptGraph={
+        "1":{"class_type":"CheckpointLoaderSimple","inputs":{"ckpt_name":checkpoint}},
+        "2":{"class_type":"CLIPTextEncode","inputs":{"text":ctx.prompt||"high quality anime illustration","clip":["1",1]}},
+        "3":{"class_type":"CLIPTextEncode","inputs":{"text":cfg.negativePrompt||"","clip":["1",1]}},
+        "4":{"class_type":"EmptyLatentImage","inputs":{"width":size[0],"height":size[1],"batch_size":1}},
+        "5":{"class_type":"KSampler","inputs":{"seed":seed,"steps":steps,"cfg":cfgScale,"sampler_name":"euler","scheduler":"normal","denoise":1,"model":["1",0],"positive":["2",0],"negative":["3",0],"latent_image":["4",0]}},
+        "6":{"class_type":"VAEDecode","inputs":{"samples":["5",0],"vae":["1",2]}},
+        "7":{"class_type":"SaveImage","inputs":{"filename_prefix":"infinite-canvas","images":["6",0]}}
+      };
+    }
+    var queued=await request("/prompt",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:promptGraph,client_id:"infinite-canvas-"+Math.random().toString(36).slice(2)})});
+    if(!queued.prompt_id)throw new Error("ComfyUI 未返回任务编号"+(queued.node_errors?"："+JSON.stringify(queued.node_errors).slice(0,400):""));
+    var history;
+    for(var attempt=0;attempt<240;attempt++){
+      await new Promise(function(resolve){setTimeout(resolve,1500);});
+      var result=await request("/history/"+encodeURIComponent(queued.prompt_id));
+      history=result&&result[queued.prompt_id];if(history)break;
+    }
+    if(!history)throw new Error("等待 ComfyUI 生成超时，请检查队列或服务器状态");
+    var images=[];Object.keys(history.outputs||{}).some(function(id){var list=history.outputs[id]&&history.outputs[id].images;if(list&&list.length){images=list;return true;}return false;});
+    if(!images.length){var status=history.status&&history.status.messages;throw new Error("工作流已结束，但没有返回图片"+(status?"："+JSON.stringify(status).slice(0,400):""));}
+    var image=images[0],view=new URL(origin+"/view");view.searchParams.set("filename",image.filename);view.searchParams.set("subfolder",image.subfolder||"");view.searchParams.set("type",image.type||"output");
+    return {kind:"image",url:view.href,note:"ComfyUI 本地生成 · "+checkpoint,provider:"comfy"};
+  }
+});
 
 /* =========================================================================
    3) 画布：平移/缩放
@@ -553,6 +615,7 @@ function nodeEl(n){
   var pin=el("span","port in");pin.dataset.port="in";pin.dataset.node=n.id;
   var pout=el("span","port out");pout.dataset.port="out";pout.dataset.node=n.id;
   c.appendChild(pin);c.appendChild(pout);
+  var nh=el("span","nhandle");nh.title="拖动调整节点大小";nh.setAttribute("aria-label","拖动调整节点大小");c.appendChild(nh);
   c.addEventListener("pointerdown",onNodeDown);
   return c;
 }
@@ -652,6 +715,10 @@ function onNodeDown(e){
     drag={type:"link",from:n.id,sx:e.clientX,sy:e.clientY};vp.setPointerCapture(e.pointerId);return;
   }
   if(e.target.classList.contains("port"))return;
+  if(e.target.classList.contains("nhandle")){
+    checkpoint();drag={type:"resize",n:n,el:c,sx:e.clientX,sy:e.clientY,w0:n.w||c.offsetWidth,h0:n.h||c.offsetHeight};
+    vp.setPointerCapture(e.pointerId);return;
+  }
   checkpoint();
   drag={type:"move",n:n,el:c,sx:e.clientX,sy:e.clientY,x0:n.x,y0:n.y};vp.setPointerCapture(e.pointerId);
 }
@@ -669,8 +736,8 @@ vp.addEventListener("pointermove",function(e){
   else if(drag.type==="move"){drag.n.x=drag.x0+(e.clientX-drag.sx)/state.view.s;
     drag.n.y=drag.y0+(e.clientY-drag.sy)/state.view.s;
     drag.el.style.left=drag.n.x+"px";drag.el.style.top=drag.n.y+"px";drawWires();}
-  else if(drag.type==="resize"){drag.n.w=Math.max(160,drag.w0+(e.clientX-drag.sx)/state.view.s);
-    drag.n.h=Math.max(120,drag.h0+(e.clientY-drag.sy)/state.view.s);
+  else if(drag.type==="resize"){drag.n.w=Math.max(180,Math.min(900,drag.w0+(e.clientX-drag.sx)/state.view.s));
+    drag.n.h=Math.max(120,Math.min(1200,drag.h0+(e.clientY-drag.sy)/state.view.s));
     drag.el.style.width=drag.n.w+"px";drag.el.style.height=drag.n.h+"px";drawWires();}
   else if(drag.type==="gmove"){
     dx=(e.clientX-drag.sx)/state.view.s;dy=(e.clientY-drag.sy)/state.view.s;
@@ -998,6 +1065,7 @@ function openSettings(){
     var p=PROVIDERS[pid];if(!p.fields||!p.fields.length)return;
     var box=el("div","prov");
     var h=el("h4");h.innerHTML=esc(p.label)+'<span class="tag">'+(p.kinds||[]).join("/")+'</span>';box.appendChild(h);
+    if(p.help){var help=el("div");help.style.cssText="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 8px";help.textContent=p.help;box.appendChild(help);}
     var cur=state.settings.providers[pid]||{};
     p.fields.forEach(function(f){
       var w=el("div","fl");w.style.marginBottom="6px";w.innerHTML='<label>'+f.l+'</label>';var inp;

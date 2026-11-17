@@ -1,0 +1,6 @@
+.chrome-cdp/
+.chrome-test/
+.chrome-test-api/
+.chrome-test-dom/
+canvas-check.png
+api-center-check.png

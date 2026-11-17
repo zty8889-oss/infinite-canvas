@@ -85,6 +85,9 @@
   #toolbar button.active{background:var(--accent);color:#fff}
   #toolbar .brand{font-weight:700;padding:6px 8px;color:#334155}
   #toolbar .sep{width:1px;background:var(--line);margin:2px 1px}
+  #toolbar .api-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#c7ceca;margin-right:5px;
+    vertical-align:1px;box-shadow:0 0 0 2px #edf1ef}
+  #toolbar .api-dot.ready{background:#32a17b;box-shadow:0 0 0 2px #e4f4ed}
 
   #inspector{position:fixed;right:0;top:0;bottom:0;width:320px;max-width:88vw;background:var(--panel);
     border-left:1px solid var(--line);box-shadow:-6px 0 22px rgba(20,30,50,.06);z-index:25;
@@ -117,18 +120,123 @@
   #menu .mi:hover{background:#eef4fc;border-color:#c9dcf5}
   #menu .mi .ico{font-size:17px}
 
-  #modal{position:fixed;inset:0;z-index:70;background:rgba(15,23,42,.4);display:none}
+  #modal{position:fixed;inset:0;z-index:70;background:rgba(18,26,23,.52);display:none;padding:24px}
   #modal.on{display:flex;align-items:center;justify-content:center}
-  #modal .box{background:#fff;border-radius:14px;width:560px;max-width:94vw;max-height:88vh;overflow:auto;box-shadow:var(--shadow)}
-  #modal .mh{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;display:flex;align-items:center}
-  #modal .mb{padding:14px 16px}
-  #modal .prov{border:1px solid #e6ecf3;border-radius:10px;padding:10px;margin-bottom:10px}
-  #modal .prov h4{margin:0 0 8px;font-size:13px}
-  #modal .prov .tag{font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px}
-  #modal label{font-size:12px;color:#64748b;display:block;margin-bottom:3px}
-  #modal input,#modal select,#modal textarea{width:100%;font-size:12.5px;border:1px solid #dbe2ea;border-radius:8px;
-    padding:6px 8px;background:#fbfcfe;outline:none}
-  #modal input:focus,#modal textarea:focus{border-color:var(--accent)}
+  #modal .box{background:#f7f9f7;border:1px solid rgba(255,255,255,.5);border-radius:14px;
+    width:min(1060px,96vw);height:min(780px,92vh);overflow:hidden;box-shadow:0 24px 70px rgba(13,22,18,.24);
+    display:flex;flex-direction:column}
+  #modal .mh{height:64px;padding:0 18px 0 22px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:12px;background:#fff;flex:0 0 auto}
+  #modal .mh .mh-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+  #modal .mh strong{font-size:15px;letter-spacing:0;color:#1c2823;white-space:nowrap}
+  #modal .mh small{font-size:11px;color:#8a968f;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #modal .mh-spacer{flex:1}
+  #modal .mh .close,#modal .mh .back{border:1px solid #dfe6e1;background:#f8faf8;border-radius:7px;
+    height:32px;cursor:pointer;color:#35443d}
+  #modal .mh .close{width:32px;font-size:18px}
+  #modal .mh .back{display:none;padding:0 11px;font-size:12px}
+  #modal .mh .back.on{display:block}
+  #modal .mb{flex:1;min-height:0;overflow:hidden}
+  .api-shell{height:100%;min-width:0;display:grid;grid-template-columns:172px minmax(0,1fr)}
+  .api-rail{background:#eef2ef;border-right:1px solid #dce3df;padding:16px 10px;overflow:auto}
+  .api-rail-label{font-size:10px;font-weight:750;letter-spacing:.1em;color:#849089;padding:0 10px 8px}
+  .api-filter{width:100%;height:38px;border:none;background:transparent;color:#536159;border-radius:7px;
+    display:flex;align-items:center;gap:9px;padding:0 10px;margin-bottom:3px;cursor:pointer;text-align:left;font-size:13px}
+  .api-filter:hover{background:rgba(255,255,255,.68)}
+  .api-filter.on{background:#fff;color:#18392f;box-shadow:0 2px 8px rgba(28,49,40,.07);font-weight:700}
+  .api-filter .count{margin-left:auto;font-size:10px;color:#87938c;background:#e1e7e3;border-radius:99px;padding:1px 6px}
+  .api-filter.on .count{background:#e2f1eb;color:#21705b}
+  .api-rail-note{margin:18px 8px 0;padding:12px;border:1px solid #d8e2dc;border-radius:8px;
+    color:#77857d;font-size:11px;line-height:1.6;background:rgba(255,255,255,.45)}
+  .api-main{min-width:0;overflow:auto;padding:22px 24px 28px}
+  .api-top{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .api-top-copy{flex:1;min-width:0}
+  .api-top h2{margin:0 0 5px;font-size:20px;letter-spacing:0;color:#17231e}
+  .api-top p{margin:0;color:#7d8982;font-size:12px;line-height:1.5}
+  .api-search{width:230px;height:36px;border:1px solid #d7dfda;border-radius:8px;background:#fff;
+    padding:0 11px;outline:none;font-size:12px;color:#24312b}
+  .api-search:focus{border-color:#6f9e8c;box-shadow:0 0 0 3px rgba(49,127,112,.08)}
+  .api-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .api-summary-item{background:#fff;border:1px solid #e0e6e2;border-radius:9px;padding:12px 14px}
+  .api-summary-item b{display:block;font-size:20px;line-height:1.1;color:#1d2b25}
+  .api-summary-item span{display:block;margin-top:5px;font-size:11px;color:#87928c}
+  .api-grid{display:grid;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .api-card{appearance:none;text-align:left;min-width:0;width:100%;min-height:148px;background:#fff;border:1px solid #dfe6e2;
+    border-radius:10px;padding:15px;cursor:pointer;display:flex;flex-direction:column;color:var(--txt);
+    transition:border-color .15s,box-shadow .15s,transform .15s}
+  .api-card:hover{border-color:#a9c2b8;box-shadow:0 8px 24px rgba(24,48,38,.09);transform:translateY(-1px)}
+  .api-card-head{display:flex;align-items:center;gap:11px;min-width:0}
+  .api-logo{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;font-size:15px;font-weight:800;color:#fff;background:#52655c}
+  .api-title-wrap{min-width:0;flex:1}
+  .api-title-wrap h3{margin:0;font-size:14px;line-height:1.35;color:#1d2a24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .api-title-wrap p{margin:3px 0 0;font-size:11px;color:#87928c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .api-status{width:8px;height:8px;border-radius:50%;background:#c3cbc6;flex:0 0 auto;box-shadow:0 0 0 3px #f2f5f3}
+  .api-status.ready{background:#36a27e;box-shadow:0 0 0 3px #e8f5f0}
+  .api-status.pending{background:#d49a35;box-shadow:0 0 0 3px #fbf4e8}
+  .api-card-desc{font-size:11.5px;color:#6f7c75;line-height:1.5;margin:12px 0 10px;min-height:34px}
+  .api-card-foot{margin-top:auto;display:flex;align-items:center;gap:7px}
+  .api-chip{font-size:10px;padding:3px 7px;border-radius:5px;background:#eff3f1;color:#5d6b64;white-space:nowrap}
+  .api-chip.current{background:#e8f5ef;color:#266e59}
+  .api-open{margin-left:auto;color:#27735f;font-size:11px;font-weight:700}
+  .api-empty{grid-column:1/-1;padding:62px 24px;text-align:center;color:#89958e;background:#fff;
+    border:1px dashed #d8e1dc;border-radius:10px;font-size:13px}
+  .api-detail{height:100%;overflow:auto;padding:22px 26px 30px}
+  .api-detail-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .api-detail-logo{width:52px;height:52px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:20px;font-weight:800}
+  .api-detail-title{flex:1;min-width:0}
+  .api-detail-title h2{margin:0 0 4px;font-size:19px;color:#18251f}
+  .api-detail-title p{margin:0;color:#7f8a84;font-size:12px;line-height:1.5}
+  .api-health{font-size:11px;padding:5px 9px;border-radius:99px;background:#eef2f0;color:#68756e;white-space:nowrap}
+  .api-health.ready{background:#e7f5ef;color:#227058}
+  .api-health.pending{background:#fff4e3;color:#966719}
+  .api-help{background:#edf4f1;border:1px solid #d7e5df;color:#52665d;border-radius:8px;
+    padding:10px 12px;font-size:11.5px;line-height:1.65;margin-bottom:16px}
+  .api-section{background:#fff;border:1px solid #dfe6e2;border-radius:10px;padding:16px;margin-bottom:12px}
+  .api-section-title{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;font-weight:750;color:#2a3932}
+  .api-section-title span{font-size:10px;font-weight:400;color:#8b9690}
+  .api-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+  .api-field{min-width:0}
+  .api-field.full{grid-column:1/-1}
+  .api-field label{font-size:11px;color:#65736c;display:block;margin-bottom:5px}
+  .api-input-wrap{position:relative}
+  #modal .api-field input,#modal .api-field select,#modal .api-field textarea{width:100%;font-family:inherit;
+    font-size:12.5px;border:1px solid #d7dfda;border-radius:7px;padding:8px 10px;background:#fbfcfb;
+    outline:none;color:#1f2d27}
+  #modal .api-field textarea{resize:vertical;min-height:92px;line-height:1.5}
+  #modal .api-field input:focus,#modal .api-field select:focus,#modal .api-field textarea:focus{
+    border-color:#6e9e8b;background:#fff;box-shadow:0 0 0 3px rgba(49,127,112,.07)}
+  .api-defaults{display:flex;flex-wrap:wrap;gap:7px}
+  .api-defaults button,.api-actions button{border:1px solid #dbe3de;background:#f7f9f8;border-radius:7px;
+    min-height:32px;padding:0 11px;color:#4b5a53;font-size:11.5px;cursor:pointer}
+  .api-defaults button:hover,.api-actions button:hover{background:#edf3f0;border-color:#c8d7d0}
+  .api-defaults button.on{background:#e4f2ec;border-color:#a7c9bc;color:#1d6b55;font-weight:700}
+  .api-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .api-actions .primary{background:#245d4d;border-color:#245d4d;color:#fff;font-weight:700}
+  .api-actions .primary:hover{background:#1d4e40}
+  .api-actions .danger{margin-left:auto;color:#99604e;border-color:#ead8d1;background:#fff8f5}
+  .api-note{font-size:10.5px;color:#8a9690;line-height:1.6;margin-top:12px}
+  .api-test-result{font-size:11px;color:#6f7c75;margin-left:2px;min-height:18px}
+  .api-test-result.ok{color:#247259}.api-test-result.err{color:#a04c37}
+  @media(max-width:800px){
+    #modal{padding:8px}
+    #modal .box{width:100%;height:96vh}
+    .api-shell{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+    .api-rail{display:flex;gap:5px;padding:8px;border-right:none;border-bottom:1px solid #dce3df;overflow-x:auto}
+    .api-rail-label,.api-rail-note{display:none}
+    .api-filter{width:auto;flex:0 0 auto;height:34px;margin:0;padding:0 9px}
+    .api-filter .count{display:none}
+    .api-main{padding:16px}
+    .api-top{display:block}
+    .api-search{width:100%;margin-top:12px}
+    .api-summary{grid-template-columns:1fr 1fr 1fr}
+    .api-top,.api-summary,.api-grid,.api-card{width:100%;min-width:0}
+    .api-grid{grid-template-columns:minmax(0,1fr)}
+    .api-detail{padding:16px}
+    .api-form-grid{grid-template-columns:1fr}
+    .api-field.full{grid-column:auto}
+  }
 
   #board{position:fixed;inset:0;z-index:65;background:rgba(244,246,250,.985);display:none;overflow:auto;padding:72px 24px 40px}
   #board.on{display:block}
@@ -208,7 +316,7 @@
   <button data-act="board">🗂 故事板</button>
   <button data-act="runall">▶▶ 一键运行</button>
   <div class="sep"></div>
-  <button data-act="settings">⚙ API 设置</button>
+  <button data-act="settings" id="api-toolbar-btn"><span id="api-toolbar-dot" class="api-dot"></span> API 接入</button>
   <button data-act="clear">清空</button>
   <div class="sep"></div>
   <a href="./index.html"><button data-act="tosb" type="button">🎬 分镜模式</button></a>
@@ -232,8 +340,12 @@
 </div>
 
 <div id="modal"><div class="box">
-  <div class="mh">⚙ API 厂商设置 <span style="flex:1"></span>
-    <button class="close" id="modal-close" style="border:none;background:#f1f4f9;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:16px">×</button></div>
+  <div class="mh">
+    <button class="back" id="modal-back" type="button">← 接入列表</button>
+    <div class="mh-title"><strong id="modal-title">模型与 API 接入中心</strong><small id="modal-subtitle">按生成能力管理服务商与默认模型</small></div>
+    <span class="mh-spacer"></span>
+    <button class="close" id="modal-close" type="button">×</button>
+  </div>
   <div class="mb" id="modal-body"></div>
 </div></div>
 
@@ -247,10 +359,10 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v3.1
+   AI漫剧节点工作台 v3.2
    - 节点画布（LibTV 风格骨架）
    - 多厂商可插拔 API 适配层（Providers 注册表）
-   - 新增：故事板视图 / 一键批跑 / 分组&折叠
+   - 新增：独立服务商接入中心 / 模型默认线路 / 自定义 OpenAI 兼容模板
    ========================================================================= */
 
 var STORE_KEY="node-canvas-v3";
@@ -260,11 +372,14 @@ var vp=document.getElementById("viewport"), world=document.getElementById("world
     inspector=document.getElementById("inspector"), insBody=document.getElementById("ins-body"),
     menu=document.getElementById("menu"), menuGrid=document.getElementById("menu-grid"),
     modal=document.getElementById("modal"), modalBody=document.getElementById("modal-body"),
+    modalTitle=document.getElementById("modal-title"), modalSubtitle=document.getElementById("modal-subtitle"),
+    modalBack=document.getElementById("modal-back"), apiToolbarDot=document.getElementById("api-toolbar-dot"),
     board=document.getElementById("board"), boardBody=document.getElementById("board-body"),
     runbar=document.getElementById("runbar"), runbarText=document.getElementById("runbar-text"),
     runbarBar=document.getElementById("runbar-bar");
 var GRID=24, uid=0;
 var state={nodes:[],links:[],view:{x:0,y:0,s:1},settings:{providers:{},active:{text:"mock",image:"mock",video:"mock",audio:"mock"}}};
+var apiCenterState={filter:"all",query:"",selected:null};
 var undoStack=[],redoStack=[],historyBytes=0,historyEnabled=false,historyWarned=false;
 function checkpoint(){if(!historyEnabled)return;var snap=JSON.stringify(state),bytes=snap.length*2;if(bytes>2*1024*1024){if(!historyWarned){toast("画布素材较大，本次操作暂不加入撤销记录");historyWarned=true;}return;}undoStack.push(snap);historyBytes+=bytes;redoStack=[];while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;updateHistoryButtons();}
 function restoreHistory(from,to){if(!from.length)return;var current=JSON.stringify(state),old=from.pop();to.push(current);if(from===undoStack)historyBytes-=old.length*2;else{historyBytes+=current.length*2;while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;}state=JSON.parse(old);renderAll();applyView();save();select(null);updateHistoryButtons();}
@@ -363,6 +478,7 @@ function makeHttp(spec){
 // ① 本地模拟：离线可跑完整流程
 registerProvider({
   id:"mock",label:"本地模拟（离线，无需Key）",kinds:["text","image","video","audio"],
+  icon:"◌",accent:"#64748b",group:"local",description:"无需密钥，浏览器内生成占位内容，用于串联和测试完整工作流。",
   fields:[],models:{},
   run:async function(ctx){
     await sleep(500);
@@ -386,39 +502,103 @@ registerProvider({
 });
 
 function sizeOf(ratio){return {"16:9":"1280x720","9:16":"720x1280","1:1":"1024x1024","3:4":"768x1024","4:3":"1024x768"}[ratio]||"1024x1024";}
-function oaiImageSpec(id,label,baseUrl,defModel){
-  return {id:id,label:label,kinds:["image"],
+function joinApiPath(base,path){
+  base=String(base||"").trim().replace(/\/+$/,"");
+  path=String(path||"");
+  if(/\/v1$/i.test(base)&&/^\/v1(?:\/|$)/i.test(path))return base+path.replace(/^\/v1/i,"");
+  return base+path;
+}
+function oaiImageSpec(id,label,baseUrl,defModel,meta){
+  return Object.assign({id:id,label:label,kinds:["image"],group:"cloud",icon:label.slice(0,1),accent:"#334155",testPath:"/v1/models",
+    description:"通过 OpenAI 图像生成协议接入，可使用兼容该协议的云端模型。",
     defaults:{baseUrl:baseUrl,apiKey:"",model:defModel},
     fields:[{k:"baseUrl",l:"Base URL"},{k:"apiKey",l:"API Key",pw:1},{k:"model",l:"默认模型"}],
     models:{image:[defModel]},
-    endpoint:function(ctx,cfg){return {url:cfg.baseUrl.replace(/\/+$/,"")+"/v1/images/generations",
+    endpoint:function(ctx,cfg){return {url:joinApiPath(cfg.baseUrl,"/v1/images/generations"),
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(cfg.apiKey||"")},
       body:JSON.stringify({model:ctx.model||cfg.model,prompt:ctx.prompt,n:1,size:sizeOf(ctx.params&&ctx.params.ratio),response_format:"b64_json"})};},
-    parse:function(j){var d=(j.data&&j.data[0])||{};return {kind:"image",b64:d.b64_json,url:d.url};}};
+    parse:function(j){var d=(j.data&&j.data[0])||{};return {kind:"image",b64:d.b64_json,url:d.url};}},meta||{});
 }
-registerProvider(makeHttp(oaiImageSpec("openai","OpenAI 兼容（通用）","https://api.openai.com","gpt-image-1")));
-registerProvider(makeHttp(oaiImageSpec("siliconflow","硅基流动 SiliconFlow","https://api.siliconflow.cn","Kwai-Kolors/Kolors")));
+registerProvider(makeHttp(oaiImageSpec("openai","OpenAI","https://api.openai.com","gpt-image-1",{
+  icon:"OA",accent:"#111827",description:"OpenAI 官方图像模型，也可改为其他兼容 OpenAI 图像协议的服务地址。"
+})));
+registerProvider(makeHttp(oaiImageSpec("siliconflow","硅基流动 SiliconFlow","https://api.siliconflow.cn","Kwai-Kolors/Kolors",{
+  icon:"硅",accent:"#2563eb",description:"国内 OpenAI 兼容服务，填写控制台 API Key 和需要使用的图像模型。"
+})));
+
+registerProvider({
+  id:"custom-openai",label:"自定义 OpenAI 兼容",kinds:["text","image"],
+  icon:"＋",accent:"#0f766e",group:"custom",testPath:"/v1/models",
+  description:"为其他厂商预留的通用接入模板，支持文本对话与图像生成，可填写独立模型名和额外请求头。",
+  help:"Base URL 可填写到域名或 /v1。文本调用 /chat/completions，图像调用 /images/generations。浏览器直连要求厂商允许 CORS。",
+  defaults:{baseUrl:"",apiKey:"",model_text:"",model_image:"",extraHeaders:""},
+  fields:[
+    {k:"baseUrl",l:"Base URL",ph:"https://api.example.com/v1"},
+    {k:"apiKey",l:"API Key",pw:1},
+    {k:"model_text",l:"文本模型",ph:"例如 deepseek-chat"},
+    {k:"model_image",l:"图像模型",ph:"例如 gpt-image-1"},
+    {k:"extraHeaders",l:"额外请求头 JSON（可选）",t:"textarea",ph:'{"X-Custom-Header":"value"}'}
+  ],
+  models:{text:[],image:[]},
+  async run(ctx){
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{});
+    if(!cfg.baseUrl)throw new Error("请先填写自定义服务的 Base URL");
+    if(!cfg.apiKey)throw new Error("请先填写自定义服务的 API Key");
+    var headers={"Content-Type":"application/json",Authorization:"Bearer "+cfg.apiKey};
+    if(cfg.extraHeaders&&cfg.extraHeaders.trim()){
+      try{Object.assign(headers,JSON.parse(cfg.extraHeaders));}
+      catch(_){throw new Error("额外请求头不是有效的 JSON");}
+    }
+    if(ctx.kind==="text"){
+      var tm=ctx.model||cfg.model_text;
+      if(!tm)throw new Error("请先填写文本模型");
+      var tr=await fetch(joinApiPath(cfg.baseUrl,"/v1/chat/completions"),{
+        method:"POST",headers:headers,
+        body:JSON.stringify({model:tm,messages:[{role:"user",content:ctx.prompt||""}],temperature:0.7})
+      });
+      if(!tr.ok)throw new Error("HTTP "+tr.status+"："+(await tr.text()).slice(0,400));
+      var tj=await tr.json(),choice=tj.choices&&tj.choices[0];
+      if(!choice)throw new Error("接口响应中没有 choices");
+      return {kind:"text",text:(choice.message&&choice.message.content)||choice.text||"",note:"自定义 OpenAI 兼容 · "+tm};
+    }
+    if(ctx.kind==="image"){
+      var im=ctx.model||cfg.model_image;
+      if(!im)throw new Error("请先填写图像模型");
+      var ir=await fetch(joinApiPath(cfg.baseUrl,"/v1/images/generations"),{
+        method:"POST",headers:headers,
+        body:JSON.stringify({model:im,prompt:ctx.prompt,n:1,size:sizeOf(ctx.params&&ctx.params.ratio),response_format:"b64_json"})
+      });
+      if(!ir.ok)throw new Error("HTTP "+ir.status+"："+(await ir.text()).slice(0,400));
+      var ij=await ir.json(),image=(ij.data&&ij.data[0])||{};
+      if(!image.url&&!image.b64_json)throw new Error("接口响应中没有图片数据");
+      return {kind:"image",url:image.url,b64:image.b64_json,note:"自定义 OpenAI 兼容 · "+im};
+    }
+    throw new Error("自定义模板暂不支持该生成类型");
+  }
+});
 
 registerProvider(makeHttp({
   id:"ark",label:"火山方舟（即梦/Seedance/豆包）",kinds:["image","video"],
+  icon:"火",accent:"#ea580c",group:"cloud",testPath:"/models",
+  description:"火山引擎方舟图像与视频生成，需要分别填写图像和视频推理接入点 ID。",
+  help:"模型字段通常填写方舟控制台创建的 Endpoint ID（形如 ep-xxxxxxxx），不是模型展示名称。",
   defaults:{baseUrl:"https://ark.cn-beijing.volces.com/api/v3",apiKey:"",model_image:"",model_video:""},
   fields:[{k:"baseUrl",l:"Base URL"},{k:"apiKey",l:"API Key",pw:1},{k:"model_image",l:"图像模型(ID)"},{k:"model_video",l:"视频模型(ID)"}],
   models:{},
   endpoint:function(ctx,cfg){
-    var base=cfg.baseUrl.replace(/\/+$/,"");
-    if(ctx.kind==="image"){return {url:base+"/images/generations",
+    if(ctx.kind==="image"){return {url:joinApiPath(cfg.baseUrl,"/images/generations"),
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(cfg.apiKey||"")},
       body:JSON.stringify({model:ctx.model||cfg.model_image,prompt:ctx.prompt,size:sizeOf(ctx.params&&ctx.params.ratio),response_format:"b64_json"})};}
     var content=[{type:"text",text:ctx.prompt}];
     var first=ctx.inputs.find(function(i){return i.kind==="image"&&(i.url||i.b64);});
     if(first) content.push({type:"image_url",image_url:{url:first.url||("data:image/png;base64,"+first.b64)}});
-    return {url:base+"/contents/generations/tasks",
+    return {url:joinApiPath(cfg.baseUrl,"/contents/generations/tasks"),
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(cfg.apiKey||"")},
       body:JSON.stringify({model:ctx.model||cfg.model_video,content:content})};
   },
   parse:function(j){if(j.data&&j.data[0])return {kind:"image",b64:j.data[0].b64_json,url:j.data[0].url};return {kind:"video",taskId:j.id};},
   async:true,
-  pollUrl:function(tid,ctx,cfg){return {url:cfg.baseUrl.replace(/\/+$/,"")+"/contents/generations/tasks/"+tid,headers:{"Authorization":"Bearer "+(cfg.apiKey||"")}};},
+  pollUrl:function(tid,ctx,cfg){return {url:joinApiPath(cfg.baseUrl,"/contents/generations/tasks/"+tid),headers:{"Authorization":"Bearer "+(cfg.apiKey||"")}};},
   pollParse:function(j){var s=j.status;
     if(s==="succeeded"||s==="success")return {status:"done",result:{kind:"video",url:(j.content&&(j.content.video_url||j.content.url))||j.video_url}};
     if(s==="failed"||s==="error")return {status:"error",message:(j.error&&j.error.message)||"生成失败"};
@@ -427,6 +607,8 @@ registerProvider(makeHttp({
 
 registerProvider(makeHttp({
   id:"kling",label:"可灵 Kling（模板·待补鉴权）",available:false,kinds:["video"],
+  icon:"可",accent:"#7c3aed",group:"cloud",
+  description:"视频生成服务商接入位；参数表单已独立，JWT 签名适配器仍需补齐。",
   defaults:{baseUrl:"https://api-beijing.klingai.com",accessKey:"",secretKey:""},
   fields:[{k:"baseUrl",l:"Base URL"},{k:"accessKey",l:"AccessKey",pw:1},{k:"secretKey",l:"SecretKey",pw:1}],
   models:{},async:true,
@@ -434,6 +616,8 @@ registerProvider(makeHttp({
 }));
 registerProvider(makeHttp({
   id:"liblib",label:"LiblibAI 哩布哩布（模板·待补签名）",available:false,kinds:["image"],
+  icon:"L",accent:"#db2777",group:"cloud",
+  description:"图像生成服务商接入位；参数表单已独立，HMAC-SHA1 签名适配器仍需补齐。",
   defaults:{baseUrl:"https://openapi.liblibai.cloud",accessKey:"",secretKey:""},
   fields:[{k:"baseUrl",l:"Base URL"},{k:"accessKey",l:"AccessKey",pw:1},{k:"secretKey",l:"SecretKey",pw:1}],
   models:{},
@@ -441,6 +625,8 @@ registerProvider(makeHttp({
 }));
 registerProvider({
   id:"comfy",label:"ComfyUI 本地",kinds:["image"],
+  icon:"C",accent:"#16a34a",group:"local",
+  description:"连接本机或局域网 ComfyUI；支持自动读取 checkpoint、内置工作流和自定义 API 工作流。",
   help:"支持内置文生图工作流，也可填写 ComfyUI 的 API 格式工作流。自定义 JSON 可用 {{prompt}}、{{negative_prompt}}、{{checkpoint}}、{{width}}、{{height}}、{{seed}}、{{steps}}、{{cfg}} 作为输入占位符。",
   defaults:{baseUrl:"http://127.0.0.1:8188",checkpoint:"",negativePrompt:"low quality, blurry, bad anatomy, extra fingers, watermark, text",workflow:""},
   fields:[
@@ -850,9 +1036,24 @@ function openInspector(n){
   var selP=el("select");
   var avail=Object.keys(PROVIDERS).filter(function(pid){return (PROVIDERS[pid].kinds||[]).indexOf(kind)>=0;});
   if(avail.indexOf(n.provider)<0)n.provider=n.provider||state.settings.active[kind]||"mock";
-  avail.forEach(function(pid){var o=el("option");o.value=pid;o.textContent=PROVIDERS[pid].label;if(pid===n.provider)o.selected=true;selP.appendChild(o);});
+  avail.forEach(function(pid){
+    var o=el("option"),p=PROVIDERS[pid];
+    o.value=pid;o.textContent=p.label+(p.available===false?" · 待适配":providerConfigured(pid)?"":" · 未配置");
+    if(pid===n.provider)o.selected=true;selP.appendChild(o);
+  });
   selP.addEventListener("change",function(){n.provider=selP.value;refresh(n);saveSoon();openInspector(n);});
   f1.appendChild(selP);
+  var providerTools=el("div");
+  providerTools.style.cssText="display:flex;align-items:center;gap:8px;margin-top:7px";
+  var providerHint=el("span");
+  var providerNow=PROVIDERS[n.provider]||{};
+  providerHint.textContent=providerNow.available===false?"该适配器待完善":providerConfigured(n.provider)?"连接信息已配置":"尚未填写连接信息";
+  providerHint.style.cssText="font-size:11px;color:"+(providerConfigured(n.provider)?"#24705a":"#8b7760");
+  var configBtn=el("button");
+  configBtn.type="button";configBtn.textContent="配置当前厂商";
+  configBtn.style.cssText="margin-left:auto;border:1px solid #dbe4df;background:#f7faf8;border-radius:6px;padding:4px 8px;font-size:11px;color:#396353;cursor:pointer";
+  configBtn.addEventListener("click",function(){openSettings(n.provider);});
+  providerTools.appendChild(providerHint);providerTools.appendChild(configBtn);f1.appendChild(providerTools);
   var mi=el("input");mi.placeholder="模型（留空用厂商默认）";mi.value=n.model||"";mi.style.marginTop="6px";
   mi.addEventListener("input",function(){n.model=mi.value;saveSoon();});
   f1.appendChild(mi);insBody.appendChild(f1);
@@ -1059,36 +1260,244 @@ function fitView(){
   state.view.s=s;state.view.x=pad-minx*s+(W-(maxx-minx)*s)/2;state.view.y=pad-miny*s+(H-(maxy-miny)*s)/2;
   applyView();save();
 }
-function openSettings(){
-  modalBody.innerHTML="";
-  Object.keys(PROVIDERS).forEach(function(pid){
-    var p=PROVIDERS[pid];if(!p.fields||!p.fields.length)return;
-    var box=el("div","prov");
-    var h=el("h4");h.innerHTML=esc(p.label)+'<span class="tag">'+(p.kinds||[]).join("/")+'</span>';box.appendChild(h);
-    if(p.help){var help=el("div");help.style.cssText="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 8px";help.textContent=p.help;box.appendChild(help);}
-    var cur=state.settings.providers[pid]||{};
-    p.fields.forEach(function(f){
-      var w=el("div","fl");w.style.marginBottom="6px";w.innerHTML='<label>'+f.l+'</label>';var inp;
-      if(f.t==="textarea"){inp=el("textarea");inp.value=cur[f.k]||"";}
-      else{inp=el("input");if(f.pw)inp.type="password";inp.value=cur[f.k]!==undefined?cur[f.k]:((p.defaults&&p.defaults[f.k])||"");}
-      if(!inp.value&&p.defaults&&p.defaults[f.k]!==undefined)inp.value=p.defaults[f.k];
-      inp.addEventListener("input",function(){var s=state.settings.providers[pid]||{};s[f.k]=inp.value;state.settings.providers[pid]=s;saveSoon();});
-      w.appendChild(inp);box.appendChild(w);
-    });
-    var dw=el("div");dw.style.cssText="font-size:12px;color:#64748b;margin-top:4px";dw.textContent="设为默认：";
-    (p.kinds||[]).forEach(function(k){
-      var b=el("button");b.textContent=k;b.style.cssText="margin:0 4px;border:none;background:#eef2ff;color:#4338ca;border-radius:6px;padding:3px 8px;cursor:pointer";
-      b.addEventListener("click",function(){state.settings.active[k]=pid;saveSoon();toast("已把「"+p.label+"」设为 "+k+" 默认");});
-      dw.appendChild(b);
-    });
-    box.appendChild(dw);modalBody.appendChild(box);
-  });
-  var note=el("div");note.style.cssText="font-size:12px;color:#94a3b8;margin-top:8px";
-  note.textContent="所有 Key 仅存本地 localStorage，不上传；导出工作流不含 Key。未配置厂商时可先用「本地模拟」跑通全流程。";
-  modalBody.appendChild(note);modal.classList.add("on");
+function kindLabel(kind){return {text:"文本",image:"图片",video:"视频",audio:"语音"}[kind]||kind;}
+function providerConfigured(pid){
+  var p=PROVIDERS[pid];if(!p)return false;
+  if(pid==="mock")return true;
+  if(p.available===false)return false;
+  var cfg=state.settings.providers[pid]||{},defaults=p.defaults||{};
+  var secrets=(p.fields||[]).filter(function(f){return f.pw;});
+  if(secrets.length)return !!(String(cfg.baseUrl||defaults.baseUrl||"").trim()&&secrets.some(function(f){return String(cfg[f.k]||"").trim();}));
+  if(p.group==="local")return !!String(cfg.baseUrl||defaults.baseUrl||"").trim();
+  return !!(String(cfg.baseUrl||defaults.baseUrl||"").trim()&&String(cfg.apiKey||"").trim());
 }
-document.getElementById("modal-close").onclick=function(){modal.classList.remove("on");};
-modal.addEventListener("click",function(e){if(e.target===modal)modal.classList.remove("on");});
+function providerModelSummary(pid){
+  var p=PROVIDERS[pid],cfg=state.settings.providers[pid]||{},d=p.defaults||{};
+  var models=[cfg.model,cfg.model_text,cfg.model_image,cfg.model_video,d.model,d.model_text,d.model_image,d.model_video]
+    .map(function(v){return String(v||"").trim();}).filter(Boolean);
+  models=models.filter(function(v,i){return models.indexOf(v)===i;});
+  if(pid==="comfy")return String(cfg.checkpoint||"自动选择模型");
+  return models.length?models.slice(0,2).join(" · "):"配置后填写模型";
+}
+function updateApiHealth(){
+  if(!apiToolbarDot)return;
+  var ready=Object.keys(PROVIDERS).some(function(pid){return pid!=="mock"&&providerConfigured(pid);});
+  apiToolbarDot.classList.toggle("ready",ready);
+}
+function setModalHeader(title,subtitle,detail){
+  modalTitle.textContent=title;modalSubtitle.textContent=subtitle;
+  modalBack.classList.toggle("on",!!detail);
+}
+function closeSettings(){modal.classList.remove("on");apiCenterState.selected=null;}
+function openSettings(pid){
+  modal.classList.add("on");
+  apiCenterState.selected=pid||null;
+  if(apiCenterState.selected&&PROVIDERS[apiCenterState.selected])renderProviderDetail(apiCenterState.selected);
+  else renderApiCenter();
+}
+function providerMatchesFilter(pid,filter){
+  var p=PROVIDERS[pid];
+  if(filter==="all")return true;
+  if(filter==="local")return p.group==="local"||p.group==="custom";
+  return (p.kinds||[]).indexOf(filter)>=0;
+}
+function renderApiCenter(){
+  setModalHeader("模型与 API 接入中心","按生成能力管理服务商、模型和默认线路",false);
+  modalBody.innerHTML="";
+  var shell=el("div","api-shell"),rail=el("aside","api-rail"),main=el("section","api-main");
+  var filters=[
+    {id:"all",label:"全部接入",icon:"◇"},{id:"text",label:"文本模型",icon:"T"},
+    {id:"image",label:"图像模型",icon:"I"},{id:"video",label:"视频模型",icon:"V"},
+    {id:"audio",label:"语音模型",icon:"A"},{id:"local",label:"本地与自建",icon:"L"}
+  ];
+  var lab=el("div","api-rail-label");lab.textContent="按能力筛选";rail.appendChild(lab);
+  filters.forEach(function(f){
+    var count=Object.keys(PROVIDERS).filter(function(pid){return providerMatchesFilter(pid,f.id);}).length;
+    var b=el("button","api-filter"+(apiCenterState.filter===f.id?" on":""));
+    b.type="button";b.innerHTML="<span>"+esc(f.icon)+"</span><span>"+esc(f.label)+"</span><span class=\"count\">"+count+"</span>";
+    b.addEventListener("click",function(){apiCenterState.filter=f.id;renderApiCenter();});
+    rail.appendChild(b);
+  });
+  var note=el("div","api-rail-note");
+  note.textContent="各服务商独立保存 Key、地址和模型。新增厂商可先使用“自定义 OpenAI 兼容”模板接入。";
+  rail.appendChild(note);
+
+  var top=el("div","api-top"),copy=el("div","api-top-copy"),title=el("h2"),desc=el("p");
+  title.textContent="选择一个服务商进行配置";
+  desc.textContent="每个接入位独立管理，不会把不同厂家的参数混在一起。";
+  copy.appendChild(title);copy.appendChild(desc);top.appendChild(copy);
+  var search=el("input","api-search");search.type="search";search.placeholder="搜索服务商或模型";
+  search.value=apiCenterState.query;search.addEventListener("input",function(){apiCenterState.query=search.value;renderApiCards();});
+  top.appendChild(search);main.appendChild(top);
+
+  var ready=Object.keys(PROVIDERS).filter(function(pid){return pid!=="mock"&&providerConfigured(pid);}).length;
+  var custom=Object.keys(PROVIDERS).filter(function(pid){return PROVIDERS[pid].group==="custom";}).length;
+  var summary=el("div","api-summary");
+  [["已配置服务",String(ready)],["接入位总数",String(Object.keys(PROVIDERS).length)],["扩展模板",String(custom)]].forEach(function(item){
+    var box=el("div","api-summary-item"),num=el("b"),text=el("span");num.textContent=item[1];text.textContent=item[0];
+    box.appendChild(num);box.appendChild(text);summary.appendChild(box);
+  });
+  main.appendChild(summary);
+  var grid=el("div","api-grid");grid.id="api-provider-grid";main.appendChild(grid);
+  shell.appendChild(rail);shell.appendChild(main);modalBody.appendChild(shell);
+  renderApiCards();
+  function renderApiCards(){
+    grid.innerHTML="";
+    var q=apiCenterState.query.trim().toLowerCase();
+    var ids=Object.keys(PROVIDERS).filter(function(pid){
+      var p=PROVIDERS[pid],hay=(p.label+" "+p.description+" "+Object.keys(p.models||{}).join(" ")+" "+providerModelSummary(pid)).toLowerCase();
+      return providerMatchesFilter(pid,apiCenterState.filter)&&(!q||hay.indexOf(q)>=0);
+    });
+    if(!ids.length){var empty=el("div","api-empty");empty.textContent="没有找到匹配的服务商，换个关键词试试。";grid.appendChild(empty);return;}
+    ids.forEach(function(pid){
+      var p=PROVIDERS[pid],ready=providerConfigured(pid),card=el("button","api-card");
+      card.type="button";
+      var head=el("div","api-card-head"),logo=el("div","api-logo"),tw=el("div","api-title-wrap"),h=el("h3"),sub=el("p");
+      logo.textContent=p.icon||p.label.slice(0,1);logo.style.background=p.accent||"#52655c";
+      h.textContent=p.label;sub.textContent=p.group==="local"?"本地 / 自建":p.group==="custom"?"通用模板":"云端服务";
+      var status=el("span","api-status "+(p.available===false?"pending":ready?"ready":""));
+      tw.appendChild(h);tw.appendChild(sub);head.appendChild(logo);head.appendChild(tw);head.appendChild(status);
+      var body=el("div","api-card-desc");body.textContent=p.description||"";
+      var foot=el("div","api-card-foot");
+      (p.kinds||[]).forEach(function(k){var chip=el("span","api-chip");chip.textContent=kindLabel(k);foot.appendChild(chip);});
+      (p.kinds||[]).forEach(function(k){if(state.settings.active[k]===pid){var chip=el("span","api-chip current");chip.textContent="默认 "+kindLabel(k);foot.appendChild(chip);}});
+      var open=el("span","api-open");open.textContent=p.available===false?"查看接入位 →":ready?"管理 →":"去配置 →";
+      foot.appendChild(open);card.appendChild(head);card.appendChild(body);card.appendChild(foot);
+      card.addEventListener("click",function(){renderProviderDetail(pid);});
+      grid.appendChild(card);
+    });
+  }
+}
+function providerFieldValue(pid,f,p){
+  var cfg=state.settings.providers[pid]||{};
+  if(cfg[f.k]!==undefined&&cfg[f.k]!=="")return cfg[f.k];
+  return p.defaults&&p.defaults[f.k]!==undefined?p.defaults[f.k]:"";
+}
+function renderProviderDetail(pid){
+  var p=PROVIDERS[pid];if(!p){renderApiCenter();return;}
+  apiCenterState.selected=pid;
+  setModalHeader(p.label,"独立接入配置 · Key 仅保存在当前浏览器",true);
+  modalBody.innerHTML="";
+  var page=el("div","api-detail");
+  var head=el("div","api-detail-head"),logo=el("div","api-detail-logo"),tw=el("div","api-detail-title"),h=el("h2"),sub=el("p");
+  logo.textContent=p.icon||p.label.slice(0,1);logo.style.background=p.accent||"#52655c";
+  h.textContent=p.label;sub.textContent=p.description||"";
+  var ready=providerConfigured(pid),health=el("span","api-health "+(p.available===false?"pending":ready?"ready":""));
+  health.textContent=p.available===false?"适配模板":ready?"已配置":"待配置";
+  tw.appendChild(h);tw.appendChild(sub);head.appendChild(logo);head.appendChild(tw);head.appendChild(health);page.appendChild(head);
+  if(p.help||p.available===false){
+    var help=el("div","api-help");
+    help.textContent=(p.available===false?"该服务商的参数入口已独立保留，运行适配器还需要补齐专用签名或鉴权逻辑。 ":"")+ (p.help||"");
+    page.appendChild(help);
+  }
+
+  function appendProviderFields(section,fields){
+    var grid=el("div","api-form-grid");
+    fields.forEach(function(f,index){
+      var full=f.t==="textarea"||f.k==="baseUrl",field=el("div","api-field"+(full?" full":"")),label=el("label"),wrap=el("div","api-input-wrap"),inp;
+      label.textContent=f.l+(f.pw?" · 私密":"");
+      if(f.t==="textarea")inp=el("textarea");
+      else if(f.t==="select")inp=el("select");
+      else inp=el("input");
+      inp.value=providerFieldValue(pid,f,p);
+      if(f.ph)inp.placeholder=f.ph;
+      if(f.pw){inp.type="password";inp.autocomplete="new-password";}
+      if(f.t==="select")(f.o||[]).forEach(function(v){var o=el("option");o.value=v;o.textContent=v;if(v===inp.value)o.selected=true;inp.appendChild(o);});
+      inp.addEventListener("input",function(){
+        var current=state.settings.providers[pid]||{};
+        current[f.k]=inp.value;state.settings.providers[pid]=current;
+        saveSoon();updateApiHealth();
+      });
+      if(f.t==="select")inp.addEventListener("change",function(){inp.dispatchEvent(new Event("input"));});
+      wrap.appendChild(inp);field.appendChild(label);field.appendChild(wrap);grid.appendChild(field);
+    });
+    section.appendChild(grid);
+  }
+  var allFields=p.fields||[];
+  var connectionKeys=["baseUrl","apiKey","accessKey","secretKey","extraHeaders"];
+  var connectionFields=allFields.filter(function(f){return connectionKeys.indexOf(f.k)>=0;});
+  var modelFields=allFields.filter(function(f){return connectionKeys.indexOf(f.k)<0;});
+  if(connectionFields.length){
+    var connection=el("section","api-section"),ct=el("div","api-section-title");
+    ct.innerHTML="<span style=\"color:#28725c\">01</span> 连接信息 <span>地址、密钥和鉴权</span>";
+    connection.appendChild(ct);appendProviderFields(connection,connectionFields);page.appendChild(connection);
+  }
+  if(modelFields.length){
+    var modelSection=el("section","api-section"),mt=el("div","api-section-title");
+    mt.innerHTML="<span style=\"color:#28725c\">"+(connectionFields.length?"02":"01")+"</span> 模型与生成参数 <span>该服务商独立保存</span>";
+    modelSection.appendChild(mt);appendProviderFields(modelSection,modelFields);page.appendChild(modelSection);
+  }
+
+  var defaultsBox=el("section","api-section"),dt=el("div","api-section-title");
+  dt.innerHTML="<span style=\"color:#28725c\">"+(connectionFields.length&&modelFields.length?"03":connectionFields.length||modelFields.length?"02":"01")+"</span> 默认线路 <span>节点未单独选择时使用</span>";
+  var defs=el("div","api-defaults");
+  (p.kinds||[]).forEach(function(k){
+    var b=el("button",state.settings.active[k]===pid?"on":"");
+    b.type="button";b.disabled=p.available===false;
+    b.textContent=(state.settings.active[k]===pid?"✓ ":"")+"设为"+kindLabel(k)+"默认";
+    b.addEventListener("click",function(){
+      state.settings.active[k]=pid;saveSoon();updateApiHealth();
+      toast("已将「"+p.label+"」设为"+kindLabel(k)+"默认");
+      renderProviderDetail(pid);
+    });
+    defs.appendChild(b);
+  });
+  if(!(p.kinds||[]).length){var none=el("span");none.textContent="该服务商无可运行能力";defs.appendChild(none);}
+  defaultsBox.appendChild(dt);defaultsBox.appendChild(defs);page.appendChild(defaultsBox);
+
+  var actions=el("div","api-actions"),test=el("button"),done=el("button","primary"),clear=el("button","danger");
+  test.type="button";test.textContent="测试连接";
+  done.type="button";done.textContent="完成";
+  clear.type="button";clear.textContent="清空该服务配置";
+  var result=el("span","api-test-result");
+  test.disabled=p.available===false||!p.fields||!p.fields.length;
+  test.addEventListener("click",async function(){await testProviderConnection(pid,result);});
+  done.addEventListener("click",function(){renderApiCenter();});
+  clear.addEventListener("click",function(){
+    if(!confirm("清空「"+p.label+"」的连接地址、Key 和模型配置？"))return;
+    delete state.settings.providers[pid];
+    (p.kinds||[]).forEach(function(k){if(state.settings.active[k]===pid)state.settings.active[k]="mock";});
+    save();updateApiHealth();renderProviderDetail(pid);toast("已清空该服务配置");
+  });
+  actions.appendChild(test);actions.appendChild(done);actions.appendChild(clear);page.appendChild(actions);page.appendChild(result);
+  var note=el("div","api-note");
+  note.textContent="安全说明：配置只写入当前浏览器的 localStorage，不会随工作流导出。网页直连云端 API 时，厂商接口必须允许浏览器跨域（CORS）；生产环境建议通过你自己的服务端代理转发请求。";
+  page.appendChild(note);modalBody.appendChild(page);
+}
+async function testProviderConnection(pid,resultEl){
+  var p=PROVIDERS[pid],cfg=state.settings.providers[pid]||{},defaults=p.defaults||{};
+  resultEl.className="api-test-result";resultEl.textContent="正在检查连接…";
+  if(pid==="mock"){resultEl.classList.add("ok");resultEl.textContent="本地模拟无需网络连接，可正常使用。";return;}
+  if(p.available===false){resultEl.classList.add("err");resultEl.textContent="该服务商的专用适配器尚未完成。";return;}
+  var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},9000);
+  try{
+    if(pid==="comfy"){
+      var base=String(cfg.baseUrl||defaults.baseUrl||"").replace(/\/+$/,"");
+      if(!base)throw new Error("请先填写 ComfyUI 地址");
+      var cr=await fetch(base+"/system_stats",{signal:controller.signal});
+      if(!cr.ok)throw new Error("HTTP "+cr.status);
+      var cj=await cr.json(),dev=(cj.devices&&cj.devices[0])||{};
+      resultEl.classList.add("ok");resultEl.textContent="ComfyUI 已连接"+(dev.name?" · "+dev.name:"");
+      return;
+    }
+    var key=String(cfg.apiKey||"").trim();
+    if(!key)throw new Error("请先填写 API Key");
+    var baseUrl=String(cfg.baseUrl||defaults.baseUrl||"").replace(/\/+$/,"");
+    if(!baseUrl)throw new Error("请先填写 Base URL");
+    var headers={Authorization:"Bearer "+key};
+    var response=await fetch(joinApiPath(baseUrl,p.testPath||"/v1/models"),{headers:headers,signal:controller.signal});
+    if(!response.ok)throw new Error("HTTP "+response.status+"，请检查地址、Key 和模型权限");
+    var data=await response.json();
+    var count=data&&Array.isArray(data.data)?data.data.length:0;
+    resultEl.classList.add("ok");resultEl.textContent="连接成功"+(count?" · 可读取 "+count+" 个模型":"");
+  }catch(err){
+    resultEl.classList.add("err");
+    resultEl.textContent=err.name==="AbortError"?"连接超时，请检查地址或跨域设置":(err.message||"连接失败")+"；云端接口可能未开放浏览器跨域访问";
+  }finally{clearTimeout(timer);}
+}
+document.getElementById("modal-close").onclick=closeSettings;
+modalBack.onclick=function(){renderApiCenter();};
+modal.addEventListener("click",function(e){if(e.target===modal)closeSettings();});
 
 /* =========================================================================
    11) 持久化 & 启动
@@ -1128,7 +1537,11 @@ function seed(){
 }
 
 if(!load())seed();else renderAll();
-historyEnabled=true;updateHistoryButtons();applyView();
+historyEnabled=true;updateHistoryButtons();applyView();updateApiHealth();
+try{
+  var launchParams=new URL(location.href).searchParams;
+  if(launchParams.get("api")==="1")openSettings(launchParams.get("provider")||"");
+}catch(_){}
 })();
 </script>
 </body>

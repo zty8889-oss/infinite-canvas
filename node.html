@@ -304,6 +304,187 @@
     #toolbar::before{font-size:10px;padding-right:9px}#toolbar button{font-size:12px;padding:7px 9px}
     #hint{max-width:72vw;font-size:10px;bottom:8px;left:8px}
     #zoominfo{right:8px;bottom:8px}}
+  /* LibTV-inspired node workspace */
+  :root{
+    --grid:rgba(255,255,255,.055); --grid2:rgba(255,255,255,.085);
+    --bg:#141518; --panel:#1a1b1f; --line:#303238; --txt:#f0f1f3;
+    --muted:#888b93; --accent:#f3f4f6; --shadow:0 18px 50px rgba(0,0,0,.34);
+  }
+  body{background:#141518}
+  #viewport{background-color:#141518;background-image:
+    radial-gradient(circle,rgba(255,255,255,.11) .8px,transparent .9px),
+    radial-gradient(circle,rgba(255,255,255,.08) 1px,transparent 1.2px)}
+  #edges path.wire{stroke:#6d7078;stroke-width:1.6}
+  #edges path.temp{stroke:#d8d9dd}
+  #toolbar{background:rgba(23,24,28,.94);border-color:#303238;box-shadow:0 10px 30px rgba(0,0,0,.25);
+    color:#e9eaed;backdrop-filter:blur(16px)}
+  #toolbar::before{color:#a6a8af;border-color:#303238}
+  #toolbar button{background:#222329;color:#d8d9dd;border-color:transparent}
+  #toolbar button:hover{background:#2b2d33;color:#fff}
+  #toolbar button.active{background:#f2f3f5;color:#151619}
+  #toolbar .brand{color:#fff}
+  #toolbar .sep{background:#303238}
+  #toolbar .api-dot{background:#555861;box-shadow:0 0 0 2px #25262b}
+  #toolbar .api-dot.ready{background:#45b58a;box-shadow:0 0 0 2px #1e382f}
+  #hint{color:#777a82;background:rgba(23,24,28,.9);border-color:#2b2d32;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+  #zoominfo{color:#9a9ca3;background:rgba(23,24,28,.94);border-color:#2d2f34}
+  #zoominfo button{background:#24262b;color:#d7d8dc}
+  #toast{background:#f1f2f4;color:#16171a}
+  #menu{background:#1a1b1f;border-color:#34363c;box-shadow:0 18px 45px rgba(0,0,0,.38)}
+  #menu .mt{color:#9a9ca3}
+  #menu .mi{background:#202126;border-color:#303238;color:#e3e4e7}
+  #menu .mi:hover{background:#292b31;border-color:#4a4d55}
+
+  .nd{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible;
+    color:#eeeff1;transition:filter .16s}
+  .nd:hover,.nd.selected{box-shadow:none;outline:0}
+  .nd .hd{height:31px;min-height:31px;padding:0 5px 5px;background:transparent!important;color:#aeb0b7;
+    border-radius:0;cursor:move;overflow:visible}
+  .nd .hd .ic{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+    font-size:11px;color:#94969e;filter:grayscale(1);opacity:.86}
+  .nd .hd .ti{font-size:12px;font-weight:600;color:#8f9199;letter-spacing:0}
+  .nd.selected .hd .ti,.nd:hover .hd .ti{color:#e8e9ec}
+  .nd.marked .hd .ti:after{content:"  · 已标记";color:#c7a85b;font-size:9px;font-weight:500}
+  .nd .hd .st{width:7px;height:7px;background:#5e6169;box-shadow:none}
+  .nd .hd .st.run{background:#e7c85e}.nd .hd .st.done{background:#48bb8a}.nd .hd .st.err{background:#ef6b73}
+  .nd .hd .del,.nd .hd .col{width:22px;height:22px;border-radius:50%;background:transparent;color:#72757d;
+    opacity:0;transition:opacity .15s,background .15s,color .15s}
+  .nd:hover .hd .del,.nd:hover .hd .col,.nd.selected .hd .del,.nd.selected .hd .col{opacity:1}
+  .nd .hd .del:hover,.nd .hd .col:hover{background:#26282d;color:#fff}
+  .nd .nd-shell{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
+    background:#111216;border:1px solid #7a7d85;border-radius:18px;
+    box-shadow:0 15px 35px rgba(0,0,0,.24);transition:border-color .16s,box-shadow .16s}
+  .nd:hover .nd-shell{border-color:#a0a3aa}
+  .nd.selected .nd-shell{border-color:#f1f2f4;box-shadow:0 0 0 1px rgba(255,255,255,.28),0 18px 42px rgba(0,0,0,.32)}
+  .nd .bd{position:relative;flex:1;min-height:0;padding:0;color:#8d9098;display:flex;flex-direction:column;gap:0}
+  .nd .preview{position:relative;flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 44%,#1c1e23 0,#111216 64%)}
+  .nd .preview-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:11px;padding:20px;text-align:center}
+  .nd .preview-empty .media-glyph{display:flex;align-items:center;justify-content:center;width:58px;height:58px;
+    border-radius:50%;background:#202228;color:#73767e;font-size:24px}
+  .nd .preview-empty .media-copy{max-width:86%;font-size:11.5px;line-height:1.55;color:#686b73;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}
+  .nd .preview-empty .media-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#555860}
+  .nd .res{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0d0e10}
+  .nd .res img,.nd .res video{width:100%;height:100%;object-fit:contain;border-radius:0;background:#0d0e10}
+  .nd .res audio{width:calc(100% - 24px)}
+  .nd .res .txtout{width:100%;height:100%;overflow:auto;border:0;border-radius:0;padding:18px;background:#111216;
+    color:#d8d9dd;font-size:12px;line-height:1.65;white-space:pre-wrap}
+  .nd .res .txtout+div{position:absolute;left:12px;right:12px;bottom:8px;color:#666971!important}
+  .nd .sum{position:absolute;left:13px;right:13px;bottom:48px;z-index:2;max-height:42px;overflow:hidden;padding:0;
+    color:#666971;font-size:10.5px;line-height:1.45;background:transparent;pointer-events:none}
+  .nd .ft{position:relative;z-index:3;display:flex;align-items:center;gap:7px;padding:8px 10px;
+    background:#15161a;border-top:1px solid #26282e}
+  .nd .run{flex:0 0 auto;width:28px;height:28px;padding:0;border-radius:50%;border:0;background:#f1f2f4;color:#17181b;
+    font-size:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+  .nd .run:before{content:"▶";font-size:10px;margin-left:1px}
+  .nd .run:hover{background:#fff;transform:scale(1.03)}
+  .nd .run[disabled]{opacity:.45;cursor:default}
+  .nd .audio-preview{height:32px;padding:0 13px;border:1px solid #3a3c43;border-radius:16px;background:#202126;
+    color:#d7d8dc;font:500 11px inherit;cursor:pointer}
+  .nd .audio-preview:hover{background:#2b2d33}
+  .nd .addchild{height:28px;padding:0 9px;border:1px solid #34363d;border-radius:14px;background:#202126;
+    color:#c7c9ce;font-size:11px}
+  .nd .addchild:hover{background:#292b31;border-color:#4a4d55}
+  .nd .prov{margin-left:auto;padding:0;color:#63666e;font-size:9.5px}
+  .nd .nhandle{right:-5px;bottom:-5px;width:13px;height:13px;border:2px solid #b7b9bf;border-radius:50%;
+    background:#17181b;box-shadow:0 0 0 2px rgba(17,18,22,.65)}
+  .nd.collapsed{height:31px!important}
+  .nd.collapsed .nd-shell{display:none}
+  .nd.collapsed .hd{padding-bottom:0}
+  .port{width:28px;height:28px;margin:0;top:calc(31px + (100% - 31px)/2);margin-top:-14px;
+    border:1px solid #555860;background:#191a1e;color:#9699a1;font-size:16px;font-weight:400;
+    display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 5px 14px rgba(0,0,0,.35)}
+  .port:after{content:"+"}
+  .port.in{left:-14px}.port.out{right:-14px;background:#191a1e}
+  .port:hover{border-color:#d8d9dd;background:#f1f2f4;color:#151619}
+  .nd.collapsed .port{top:15px}
+
+  #inspector{width:520px;max-height:min(650px,calc(100vh - 100px));background:#111216;border:1px solid #34363c;
+    border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.48);color:#e9eaed;overflow:hidden}
+  #inspector::before{display:none}
+  #inspector .ih{height:47px;min-height:47px;padding:0 13px 0 15px;background:#15161a;border-bottom:1px solid #26282e;
+    gap:8px}
+  #inspector .ih:before{content:"◇";display:flex;align-items:center;justify-content:center;width:21px;height:21px;
+    border-radius:50%;background:#25272c;color:#a7a9b0;font-size:10px;flex:0 0 auto}
+  #inspector #ins-title{min-width:0;flex:1;height:30px;padding:0 4px;border:1px solid transparent;background:transparent;
+    color:#e8e9ec;font:600 13px/30px inherit;outline:0}
+  #inspector #ins-title:hover{border-color:#2d2f35;background:#191a1e}
+  #inspector #ins-title:focus{border-color:#555860;background:#191a1e}
+  #inspector .pill{display:inline-flex;align-items:center;height:22px;margin:0;padding:0 8px;border-radius:11px;
+    background:#202126;color:#878a92;font-size:10px;white-space:nowrap}
+  #inspector .close{width:27px;height:27px;flex:0 0 auto;border:0;border-radius:50%;background:#222329;color:#9ca0a8;
+    font-size:16px;line-height:1;cursor:pointer}
+  #inspector .close:hover{background:#303238;color:#fff}
+  #inspector .ib{padding:0;overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;scrollbar-width:thin}
+  #inspector .ie-actions{display:flex;align-items:center;gap:5px;padding:8px 12px;border-bottom:1px solid #23252a;
+    overflow-x:auto;scrollbar-width:none}
+  #inspector .ie-actions::-webkit-scrollbar{display:none}
+  #inspector .ie-action{height:27px;flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;padding:0 9px;
+    border:1px solid #303238;border-radius:7px;background:#1b1c20;color:#a9abb2;font-size:10.5px;cursor:pointer}
+  #inspector .ie-action:hover{background:#25262b;color:#eceef1;border-color:#42454c}
+  #inspector .ie-action.on{background:#f0f1f3;color:#17181b;border-color:#f0f1f3}
+  #inspector .ie-prompt{position:relative;padding:10px 15px 0;flex:0 0 auto}
+  #inspector .ie-prompt textarea{display:block;width:100%;min-height:122px;max-height:230px;resize:none;padding:5px 0 29px;
+    border:0;border-radius:0;background:transparent;color:#e0e1e4;font:400 13px/1.65 inherit;outline:0;
+    caret-color:#fff}
+  #inspector .ie-prompt textarea::placeholder{color:#555860}
+  #inspector .ie-count{position:absolute;right:16px;bottom:7px;color:#5f626a;font-size:9.5px;pointer-events:none}
+  #inspector .ie-note{display:none;margin:0 15px 7px;padding:7px 9px;border-radius:7px;background:#1c1d21;
+    color:#7f828a;font-size:10px;line-height:1.45;white-space:pre-wrap;max-height:64px;overflow:auto}
+  #inspector .ie-note.on{display:block}
+  #inspector .ie-note.error{color:#e18c93;background:#2a1c1f}
+  #inspector .ie-advanced{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 15px;
+    background:#141519;border-top:1px solid #24262b;border-bottom:1px solid #24262b}
+  #inspector .ie-advanced.open{display:grid}
+  #inspector .ie-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+  #inspector .ie-field.full{grid-column:1/-1}
+  #inspector .ie-field label{display:block;margin:0;color:#656871;font-size:9.5px}
+  #inspector .ie-field input,#inspector .ie-field select,#inspector .ie-field textarea{width:100%;min-height:30px;
+    height:30px;padding:0 8px;border:1px solid #303238;border-radius:6px;background:#1c1d22;color:#cfd1d6;
+    font:400 11px/28px inherit;outline:0}
+  #inspector .ie-field textarea{height:54px;min-height:54px;padding:6px 8px;line-height:1.45;resize:vertical}
+  #inspector .ie-field input:focus,#inspector .ie-field select:focus,#inspector .ie-field textarea:focus{border-color:#656871}
+  #inspector .ie-field input[type="color"]{padding:3px}
+  #inspector .ie-more-actions{grid-column:1/-1;display:flex;gap:6px;padding-top:2px}
+  #inspector .ie-more-actions button{height:29px;flex:1;border:1px solid #303238;border-radius:6px;background:#1c1d22;
+    color:#aeb0b7;font-size:10.5px;cursor:pointer}
+  #inspector .ie-more-actions button:hover{background:#27292f;color:#fff}
+  #inspector .ie-more-actions button.danger:hover{background:#321f22;border-color:#66373d;color:#f0a8ae}
+  #inspector .ie-toolbar{display:flex;align-items:center;gap:6px;padding:9px 10px 10px;background:#15161a}
+  #inspector .ie-controls{display:flex;align-items:center;gap:5px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}
+  #inspector .ie-controls::-webkit-scrollbar{display:none}
+  #inspector .ie-select,#inspector .ie-model{height:30px;min-width:0;border:1px solid #303238;border-radius:7px;
+    background:#1e1f24;color:#c8cad0;font:500 10.5px/28px inherit;outline:0;padding:0 8px;flex:0 0 auto}
+  #inspector .ie-select:hover,#inspector .ie-model:hover{border-color:#484b53;background:#25262c}
+  #inspector .ie-select.provider{max-width:118px}
+  #inspector .ie-model{width:102px}
+  #inspector .ie-model::placeholder{color:#676a73}
+  #inspector .ie-chip{height:30px;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:0 9px;
+    border:1px solid #303238;border-radius:7px;background:#1e1f24;color:#aaacb3;font-size:10.5px;white-space:nowrap}
+  #inspector .ie-tool{width:30px;height:30px;padding:0;border:1px solid #303238;border-radius:7px;background:#1e1f24;
+    color:#aeb0b7;font-size:13px;cursor:pointer;flex:0 0 auto}
+  #inspector .ie-tool:hover{background:#292b31;color:#fff}
+  #inspector .ie-send{width:34px;height:34px;flex:0 0 auto;border:0;border-radius:50%;background:#f0f1f3;color:#17181b;
+    font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:3px}
+  #inspector .ie-send:hover{background:#fff;transform:scale(1.03)}
+  #inspector .ie-send:disabled{opacity:.42;transform:none;cursor:default}
+  #inspector.group-mode .ie-prompt{display:none}
+  #inspector.group-mode .ie-toolbar{display:none}
+
+  @media(max-width:760px){
+    #viewport{background-size:20px 20px,80px 80px!important}
+    #toolbar{top:8px;left:8px;right:8px;padding:6px}
+    #toolbar::before{display:none}
+    #inspector{max-height:min(590px,calc(100vh - 28px));border-radius:15px}
+    #inspector .ie-advanced{grid-template-columns:1fr}
+    #inspector .ie-field.full{grid-column:auto}
+    #inspector .ie-more-actions{grid-column:auto}
+    #inspector .ie-select.provider{max-width:104px}
+    #inspector .ie-model{width:88px}
+    #hint{display:none}
+  }
 </style>
 </head>
 <body>
@@ -316,7 +497,7 @@
     </defs></svg>
     <div id="nodes"></div>
     <div id="inspector">
-      <div class="ih"><span class="t" id="ins-title">节点</span><span class="pill" id="ins-type"></span>
+      <div class="ih"><input id="ins-title" value="节点" autocomplete="off" spellcheck="false"><span class="pill" id="ins-type"></span>
         <button class="close" id="ins-close" type="button">×</button></div>
       <div class="ib" id="ins-body"></div>
     </div>
@@ -373,8 +554,8 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v3.3
-   - 节点画布（LibTV 风格骨架）
+   AI漫剧节点工作台 v3.4
+   - LibTV 风格节点卡片与底部创作编辑器
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
    ========================================================================= */
@@ -720,9 +901,8 @@ registerProvider({
 function applyView(){
   world.style.transform="translate("+state.view.x+"px,"+state.view.y+"px) scale("+state.view.s+")";
   var g=GRID*state.view.s;
-  vp.style.backgroundSize=g+"px "+g+"px,"+g+"px "+g+"px,"+(g*4)+"px "+(g*4)+"px,"+(g*4)+"px "+(g*4)+"px";
-  vp.style.backgroundPosition=state.view.x+"px "+state.view.y+"px,"+state.view.x+"px "+state.view.y+"px,"+
-    state.view.x+"px "+state.view.y+"px,"+state.view.x+"px "+state.view.y+"px";
+  vp.style.backgroundSize=Math.max(10,g)+"px "+Math.max(10,g)+"px,"+Math.max(48,g*4)+"px "+Math.max(48,g*4)+"px";
+  vp.style.backgroundPosition=state.view.x+"px "+state.view.y+"px,"+state.view.x+"px "+state.view.y+"px";
   ztext.textContent=Math.round(state.view.s*100)+"%";
 }
 function s2w(cx,cy){return {x:(cx-state.view.x)/state.view.s,y:(cy-state.view.y)/state.view.s};}
@@ -740,10 +920,10 @@ function ensureNodeVisible(n){
 }
 function focusNodeForEditing(n){
   if(!n||n.type==="group")return;
-  if((n.w||230)*state.view.s>=180)return;
-  var target=Math.min(1,Math.max(state.view.s,innerWidth<600?0.72:0.62));
+  if((n.w||280)*state.view.s>=280)return;
+  var target=Math.min(1.15,Math.max(state.view.s,280/(n.w||280)));
   state.view.s=target;
-  state.view.x=innerWidth/2-(n.x+(n.w||230)/2)*target;
+  state.view.x=innerWidth/2-(n.x+(n.w||280)/2)*target;
   state.view.y=Math.max(96,innerHeight*0.12)-n.y*target;
   applyView();saveSoon();
 }
@@ -763,7 +943,7 @@ function directChildren(id){
 }
 function nodeBottom(n){return n.y+(n.collapsed?42:(n.h||150));}
 function nextChildPosition(parent){
-  var childW=230,rowY=nodeBottom(parent)+86;
+  var childW=280,rowY=nodeBottom(parent)+74;
   var children=directChildren(parent.id).filter(function(n){return n.type!=="group"&&n.y>=parent.y+(parent.h||150)*0.55;}).sort(function(a,b){return a.x-b.x;});
   if(children.length){
     var last=children[children.length-1];
@@ -777,10 +957,22 @@ function childTypesFor(n){
 }
 function positionInspector(n){
   if(!n||!n.id)return;
-  var dockW=Math.max(330,Math.min(430,Math.max(n.w||230,330)));
+  var dockScreenW=Math.min(520,innerWidth-24);
+  var dockW=dockScreenW/Math.max(.12,state.view.s);
   inspector.style.width=dockW+"px";
-  inspector.style.left=(n.x+(n.w||230)/2-dockW/2)+"px";
+  inspector.style.left=(n.x+(n.w||280)/2-dockW/2)+"px";
   inspector.style.top=(nodeBottom(n)+18)+"px";
+}
+function ensureInspectorInView(){
+  if(!inspector.classList.contains("open"))return;
+  var scale=Math.max(.12,state.view.s),left=parseFloat(inspector.style.left)||0,top=parseFloat(inspector.style.top)||0;
+  var width=inspector.offsetWidth||parseFloat(inspector.style.width)||420,height=inspector.offsetHeight||420;
+  var sx=state.view.x+left*scale,sy=state.view.y+top*scale;
+  var dx=0,dy=0;
+  if(sx<12)dx=12-sx;else if(sx+width*scale>innerWidth-12)dx=innerWidth-12-(sx+width*scale);
+  var safeTop=72,safeBottom=innerHeight-54;
+  if(sy<safeTop)dy=safeTop-sy;else if(sy+height*scale>safeBottom)dy=safeBottom-(sy+height*scale);
+  if(dx||dy){state.view.x+=dx;state.view.y+=dy;applyView();saveSoon();}
 }
 
 function renderAll(){
@@ -834,40 +1026,60 @@ function onGroupDown(e){
 }
 
 function statusClass(s){return s==="running"?"run":s==="done"?"done":s==="error"?"err":"";}
+function primaryFieldFor(n){
+  var fields=(NODETYPES[n.type]||{}).fields||[];
+  var f=fields.filter(function(x){return x.t==="textarea";})[0];
+  if(f)return f;
+  return fields.filter(function(x){return x.k==="text"||x.k==="note";})[0]||fields[0]||null;
+}
+function promptGlyph(kind){return kind==="video"?"▶":kind==="audio"?"≋":kind==="image"?"✦":"¶";}
 function nodeEl(n){
   var dt=NODETYPES[n.type]||{label:n.type,icon:"⬛",color:"#64748b",kind:"any"};
-  var c=el("div","nd"+(n.collapsed?" collapsed":""));c.dataset.id=n.id;
+  var c=el("div","nd"+(n.collapsed?" collapsed":"")+(n.params&&n.params._marked?" marked":""));c.dataset.id=n.id;
   c.style.left=n.x+"px";c.style.top=n.y+"px";
-  var hd=el("div","hd");hd.style.background=dt.color;
+  c.style.width=(n.w||280)+"px";c.style.height=(n.h||300)+"px";
+  var hd=el("div","hd");
   hd.innerHTML='<span class="ic">'+dt.icon+'</span><span class="ti">'+esc(n.title||dt.label)+'</span>'+
     '<span class="st '+statusClass(n.status)+'"></span>';
   var colb=el("button","col");colb.textContent=n.collapsed?"▸":"▾";colb.title="折叠/展开";
+  colb.setAttribute("aria-label","折叠或展开节点");
   colb.addEventListener("pointerdown",function(e){e.stopPropagation();});
   colb.addEventListener("click",function(e){e.stopPropagation();checkpoint();n.collapsed=!n.collapsed;refresh(n);save();});
   hd.appendChild(colb);
-  var del=el("button","del");del.textContent="×";
+  var del=el("button","del");del.textContent="×";del.title="删除节点";del.setAttribute("aria-label","删除节点");
   del.addEventListener("pointerdown",function(e){e.stopPropagation();});
   del.addEventListener("click",function(e){e.stopPropagation();removeNode(n.id);});
   hd.appendChild(del);c.appendChild(hd);
 
+  var shell=el("div","nd-shell");
   var bd=el("div","bd");
-  var sum=el("div","sum");sum.textContent=summary(n);bd.appendChild(sum);
-  var res=el("div","res");renderResult(res,n);bd.appendChild(res);
-  c.appendChild(bd);
+  var preview=el("div","preview");
+  if(n.output){
+    var res=el("div","res");renderResult(res,n);preview.appendChild(res);
+    var sum=el("div","sum");sum.textContent=summary(n);preview.appendChild(sum);
+  }else{
+    var empty=el("div","preview-empty");
+    var glyph=el("span","media-glyph");glyph.textContent=promptGlyph(dt.kind);
+    var label=el("span","media-label");label.textContent=dt.label||"节点";
+    var copy=el("span","media-copy");copy.textContent=summary(n)||"在下方描述内容后开始生成";
+    empty.appendChild(glyph);empty.appendChild(label);empty.appendChild(copy);preview.appendChild(empty);
+  }
+  bd.appendChild(preview);shell.appendChild(bd);
 
   var ft=el("div","ft");
-  var run=el("button","run");run.textContent=n.status==="running"?"生成中…":"▶ 生成";
+  var run=el("button","run");run.textContent=n.status==="running"?"…":"▶";
+  run.title=n.status==="running"?"节点运行中":"运行此节点";run.setAttribute("aria-label",run.title);
   run.disabled=n.status==="running";
   run.addEventListener("pointerdown",function(e){e.stopPropagation();});
   run.addEventListener("click",function(e){e.stopPropagation();runNode(n.id);});
   ft.appendChild(run);
-  var addChild=el("button","addchild");addChild.type="button";addChild.textContent="＋下方添加";
+  var addChild=el("button","addchild");addChild.type="button";addChild.textContent="＋ 向下";
   addChild.title="在节点下方添加并自动连线";
   addChild.addEventListener("pointerdown",function(e){e.stopPropagation();});
   addChild.addEventListener("click",function(e){e.stopPropagation();var r=addChild.getBoundingClientRect();showMenu(r.left,r.bottom+7,n.id);});
   ft.appendChild(addChild);
   var pr=el("span","prov");pr.textContent=providerLabel(n);
-  ft.appendChild(pr);c.appendChild(ft);
+  ft.appendChild(pr);shell.appendChild(ft);c.appendChild(shell);
 
   var pin=el("span","port in");pin.dataset.port="in";pin.dataset.node=n.id;
   var pout=el("span","port out");pout.dataset.port="out";pout.dataset.node=n.id;
@@ -889,6 +1101,17 @@ function summary(n){
   if(n.type==="upload")return n.output&&n.output.url?"已上传":"点击下方按钮上传图片";
   return dt?dt.label:"";
 }
+function safeText(n){
+  if(!n)return "";
+  if(n.output&&n.output.text)return String(n.output.text);
+  if(n.output&&n.output.note)return String(n.output.note);
+  return summary(n);
+}
+function refreshPreview(n){
+  var box=nodesEl.querySelector('[data-id="'+n.id+'"]');if(!box)return;
+  var target=box.querySelector(".sum")||box.querySelector(".media-copy");
+  if(target)target.textContent=summary(n);
+}
 function renderResult(box,n){
   box.innerHTML="";var o=n.output;if(!o)return;
   if(o.kind==="image"&&(o.url||o.b64)){var im=el("img");im.src=o.url||("data:image/png;base64,"+o.b64);im.draggable=false;box.appendChild(im);}
@@ -896,7 +1119,7 @@ function renderResult(box,n){
     if(o.url){var v=el("video");v.src=o.url;v.controls=true;box.appendChild(v);}
     else{var d=el("div","txtout");d.textContent=o.note||"视频待生成";box.appendChild(d);}
   } else if(o.kind==="audio"){
-    var ab=el("button","run");ab.style.padding="6px";ab.textContent="▶ 朗读预览";
+    var ab=el("button","audio-preview");ab.textContent="▶ 朗读预览";
     ab.addEventListener("click",function(e){e.stopPropagation();speak(o.text||"");});box.appendChild(ab);
     if(o.url){var au=el("audio");au.src=o.url;au.controls=true;box.appendChild(au);}
   } else if(o.text){var t=el("div","txtout");t.textContent=o.text;box.appendChild(t);}
@@ -927,7 +1150,7 @@ function addNode(type,x,y,parentId){
   checkpoint();
   if(type==="group")return addGroup(x,y);
   var dt=NODETYPES[type];if(!dt)return null;
-  var n={id:id(),type:type,title:dt.label,x:x,y:y,w:230,h:150,params:makeParams(type),
+  var n={id:id(),type:type,title:dt.label,x:x,y:y,w:280,h:300,params:makeParams(type),
     provider:"",model:"",status:"idle",output:null,log:""};
   state.nodes.push(n);
   var parent=parentId?nodeById(parentId):null,parentKind=parent?(NODETYPES[parent.type]||{}).kind:"";
@@ -1094,109 +1317,174 @@ function hideMenu(){menu.classList.remove("on");menu.style.display="none";menuAn
 function openInspector(n){
   if(!n){closeInspector();return;}
   var dt=NODETYPES[n.type]||{};
-  document.getElementById("ins-title").textContent=n.title||dt.label||n.type;
+  var titleEl=document.getElementById("ins-title");
+  titleEl.value=n.title||dt.label||n.type;
+  titleEl.oninput=function(){
+    n.title=titleEl.value;
+    refresh(n);saveSoon();
+  };
   document.getElementById("ins-type").textContent=n.type==="group"?"分组":(dt.label||n.type);
+  inspector.classList.toggle("group-mode",n.type==="group");
   insBody.innerHTML="";
 
-  function titleField(){
-    var f=el("div","fl");f.innerHTML='<label>名称</label>';
-    var ti=el("input");ti.value=n.title||"";
-    ti.addEventListener("input",function(){n.title=ti.value;document.getElementById("ins-title").textContent=ti.value||dt.label||n.type;refresh(n);saveSoon();});
-    f.appendChild(ti);insBody.appendChild(f);return ti;
+  function action(label,title,handler){
+    var b=el("button","ie-action");b.type="button";b.textContent=label;b.title=title||label;
+    b.addEventListener("click",handler);return b;
   }
 
   if(n.type==="group"){
-    titleField();
-    var fc=el("div","fl");fc.innerHTML='<label>分组底色</label>';
-    var col=el("input");col.type="color";col.value=n.color||"#dbeafe";
+    var gg=el("div","ie-advanced open");
+    var colorField=el("div","ie-field");
+    colorField.innerHTML='<label>分组底色</label>';
+    var col=el("input");col.type="color";col.value=n.color||"#202329";
     col.addEventListener("input",function(){n.color=col.value;refresh(n);saveSoon();});
-    fc.appendChild(col);insBody.appendChild(fc);
-    var info=el("div","fl");info.innerHTML='<label>包含节点</label><div style="font-size:13px;color:#334155">'+childrenOf(n).length+' 个（框住即纳入）</div>';
-    insBody.appendChild(info);
-    var b1=el("button","btn ghost");b1.textContent=(n.collapsed?"▸ 展开分组":"▾ 折叠分组");
-    b1.addEventListener("click",function(){checkpoint();n.collapsed=!n.collapsed;renderAll();save();openInspector(n);});
-    insBody.appendChild(b1);
-    var b2=el("button","btn ghost");b2.textContent="🗑 解散分组";b2.addEventListener("click",function(){ungroup(n.id);});
-    insBody.appendChild(b2);
-    positionInspector(n);inspector.classList.add("open");return;
+    colorField.appendChild(col);gg.appendChild(colorField);
+    var countField=el("div","ie-field");
+    countField.innerHTML='<label>框内节点</label><input readonly value="'+childrenOf(n).length+' 个节点">';
+    gg.appendChild(countField);
+    var groupActions=el("div","ie-more-actions");
+    var fold=el("button");fold.type="button";fold.textContent=n.collapsed?"展开分组":"折叠分组";
+    fold.addEventListener("click",function(){checkpoint();n.collapsed=!n.collapsed;renderAll();save();openInspector(n);});
+    var dissolve=el("button","danger");dissolve.type="button";dissolve.textContent="解散分组";
+    dissolve.addEventListener("click",function(){ungroup(n.id);});
+    groupActions.appendChild(fold);groupActions.appendChild(dissolve);gg.appendChild(groupActions);
+    insBody.appendChild(gg);positionInspector(n);inspector.classList.add("open");ensureInspectorInView();return;
   }
-
-  titleField();
 
   var kind=dt.kind||"text";
-  var f1=el("div","fl");f1.innerHTML='<label>生成厂商 / 模型</label>';
-  var selP=el("select");
-  var avail=Object.keys(PROVIDERS).filter(function(pid){return (PROVIDERS[pid].kinds||[]).indexOf(kind)>=0;});
-  if(avail.indexOf(n.provider)<0)n.provider=n.provider||state.settings.active[kind]||"mock";
-  avail.forEach(function(pid){
-    var o=el("option"),p=PROVIDERS[pid];
-    o.value=pid;o.textContent=p.label+(p.available===false?" · 待适配":providerConfigured(pid)?"":" · 未配置");
-    if(pid===n.provider)o.selected=true;selP.appendChild(o);
-  });
-  selP.addEventListener("change",function(){n.provider=selP.value;refresh(n);saveSoon();openInspector(n);});
-  f1.appendChild(selP);
-  var providerTools=el("div");
-  providerTools.style.cssText="display:flex;align-items:center;gap:8px;margin-top:7px";
-  var providerHint=el("span");
-  var providerNow=PROVIDERS[n.provider]||{};
-  providerHint.textContent=providerNow.available===false?"该适配器待完善":providerConfigured(n.provider)?"连接信息已配置":"尚未填写连接信息";
-  providerHint.style.cssText="font-size:11px;color:"+(providerConfigured(n.provider)?"#24705a":"#8b7760");
-  var configBtn=el("button");
-  configBtn.type="button";configBtn.textContent="配置当前厂商";
-  configBtn.style.cssText="margin-left:auto;border:1px solid #dbe4df;background:#f7faf8;border-radius:6px;padding:4px 8px;font-size:11px;color:#396353;cursor:pointer";
-  configBtn.addEventListener("click",function(){openSettings(n.provider);});
-  providerTools.appendChild(providerHint);providerTools.appendChild(configBtn);f1.appendChild(providerTools);
-  var mi=el("input");mi.placeholder="模型（留空用厂商默认）";mi.value=n.model||"";mi.style.marginTop="6px";
-  mi.addEventListener("input",function(){n.model=mi.value;saveSoon();});
-  f1.appendChild(mi);insBody.appendChild(f1);
-
-  (dt.fields||[]).forEach(function(fl){
-    var w=el("div","fl");w.innerHTML='<label>'+fl.l+'</label>';var inp;
-    if(fl.t==="textarea"){inp=el("textarea");inp.value=n.params[fl.k]||"";}
-    else if(fl.t==="select"){inp=el("select");fl.o.forEach(function(v){var o=el("option");o.value=v;o.textContent=v;if(v===n.params[fl.k])o.selected=true;inp.appendChild(o);});}
-    else{inp=el("input");inp.type=fl.t==="number"?"number":"text";inp.value=n.params[fl.k]!==undefined?n.params[fl.k]:"";}
-    if(fl.ph)inp.placeholder=fl.ph;
-    inp.addEventListener("input",function(){n.params[fl.k]=inp.value;saveSoon();
-      var s=nodesEl.querySelector('[data-id="'+n.id+'"] .sum');if(s)s.textContent=summary(n);});
-    w.appendChild(inp);insBody.appendChild(w);
-  });
-
+  n.params=n.params||{};
+  var promptField=primaryFieldFor(n);
   var childTypes=childTypesFor(n);
-  if(childTypes.length){
-    var grow=el("div","dock-section"),gt=el("div","dock-title");gt.textContent="向下生成";
-    var gm=el("div","dock-meta");gm.innerHTML="<span>新卡片生成在当前节点下方</span><strong>自动连线</strong>";
-    var ga=el("div","dock-actions");
-    childTypes.forEach(function(t){
-      var cd=NODETYPES[t],b=el("button");b.type="button";b.textContent=cd.icon+" "+cd.label;
-      b.addEventListener("click",function(){addChildNode(n.id,t);});
-      ga.appendChild(b);
+  var actions=el("div","ie-actions");
+
+  function uploadImage(){
+    pickFile(function(url){
+      checkpoint();n.output={kind:"image",url:url,note:"本地上传素材"};n.status="done";
+      refresh(n);save();openInspector(n);toast("图片已添加到节点");
     });
-    var more=el("button","wide");more.type="button";more.textContent="＋ 在下方添加其他节点";
-    more.addEventListener("click",function(){var r=more.getBoundingClientRect();showMenu(r.left,r.bottom+7,n.id);});
-    ga.appendChild(more);grow.appendChild(gt);grow.appendChild(gm);grow.appendChild(ga);insBody.appendChild(grow);
   }
 
-  if(dt.upload){
-    var fu=el("div","fl");var b=el("button","btn ghost");b.textContent="📤 上传图片";
-    b.addEventListener("click",function(){pickFile(function(url){n.output={kind:"image",url:url};n.status="done";refresh(n);save();});});
-    fu.appendChild(b);insBody.appendChild(fu);
+  if(dt.upload||kind==="image"||kind==="video")actions.appendChild(action("＋ 上传","上传图片作为当前节点素材",uploadImage));
+  actions.appendChild(action("＋ 向下生成","在当前节点下方创建卡片并自动连线",function(){
+    var r=actions.getBoundingClientRect();showMenu(r.left,r.bottom+7,n.id);
+  }));
+  actions.appendChild(action("⌁ 画布参考","把已连线节点的内容作为引用写入描述",function(){
+    if(!promptField){toast("当前节点没有可引用的文本区域");return;}
+    var refs=[];
+    state.links.filter(function(l){return l.to===n.id;}).forEach(function(l){
+      var up=nodeById(l.from);if(!up)return;
+      var text=safeText(up);
+      refs.push("@"+(up.title||(NODETYPES[up.type]||{}).label||"素材")+(text?"："+text.slice(0,100):""));
+    });
+    if(!refs.length){toast("先连接一个上游节点，再添加画布参考");return;}
+    var current=String(n.params[promptField.k]||"");
+    n.params[promptField.k]=(current?current+"\n":"")+"参考："+refs.join("；");
+    refresh(n);save();openInspector(n);toast("已加入画布参考");
+  }));
+  var markBtn=action("⚑ 标记",n.params._marked?"取消标记":"标记此节点",function(){
+    checkpoint();n.params._marked=!n.params._marked;markBtn.classList.toggle("on",!!n.params._marked);
+    refresh(n);save();
+  });
+  markBtn.classList.toggle("on",!!n.params._marked);actions.appendChild(markBtn);
+  if(childTypes.indexOf("charview")>=0)actions.appendChild(action("角色库","在下方生成角色卡并自动连线",function(){addChildNode(n.id,"charview");}));
+  var moreBtn=action("··· 参数","展开其他生成参数",function(){advanced.classList.toggle("open");moreBtn.classList.toggle("on",advanced.classList.contains("open"));});
+  actions.appendChild(moreBtn);insBody.appendChild(actions);
+
+  var promptWrap,promptInput;
+  if(promptField){
+    promptWrap=el("div","ie-prompt");
+    promptInput=el("textarea");
+    promptInput.value=n.params[promptField.k]||"";
+    promptInput.placeholder=(kind==="video"?"描述你想要生成的画面与镜头运动，@引用素材":kind==="audio"?"输入台词或旁白，留空时自动读取上游文本":kind==="text"?"写下故事梗概、人物关系和剧情走向":"描述你想要生成的画面内容，@引用素材");
+    var count=el("span","ie-count");
+    function updateCount(){count.textContent=String(promptInput.value||"").length+" 字";}
+    updateCount();
+    promptInput.addEventListener("input",function(){
+      n.params[promptField.k]=promptInput.value;updateCount();
+      var box=nodesEl.querySelector('[data-id="'+n.id+'"]');
+      var target=box&&(box.querySelector(".sum")||box.querySelector(".media-copy"));
+      if(target)target.textContent=summary(n);
+      saveSoon();
+    });
+    promptWrap.appendChild(promptInput);promptWrap.appendChild(count);insBody.appendChild(promptWrap);
   }
 
-  var fp=el("div","fl");fp.innerHTML='<label>最终 Prompt（拼接后）</label>';
-  var ta=el("textarea");ta.value=buildPrompt(n);ta.readOnly=true;ta.style.color="#64748b";ta.style.minHeight="54px";
-  fp.appendChild(ta);insBody.appendChild(fp);
+  var advanced=el("div","ie-advanced");
+  var pinned={ratio:1,dur:1};
+  (dt.fields||[]).forEach(function(field){
+    if(field===promptField||pinned[field.k])return;
+    var wrap=el("div","ie-field"+(field.t==="textarea"?" full":""));
+    var lab=el("label");lab.textContent=field.l;wrap.appendChild(lab);
+    var input;
+    if(field.t==="select"){
+      input=el("select");field.o.forEach(function(v){var o=el("option");o.value=v;o.textContent=v;if(v===n.params[field.k])o.selected=true;input.appendChild(o);});
+    }else{
+      input=el(field.t==="textarea"?"textarea":"input");
+      if(field.t==="number")input.type="number";
+      input.value=n.params[field.k]!==undefined?n.params[field.k]:"";
+    }
+    if(field.ph)input.placeholder=field.ph;
+    input.addEventListener("input",function(){n.params[field.k]=input.value;saveSoon();refreshPreview(n);});
+    input.addEventListener("change",function(){n.params[field.k]=input.value;saveSoon();refreshPreview(n);});
+    wrap.appendChild(input);advanced.appendChild(wrap);
+  });
+  var extraActions=el("div","ie-more-actions");
+  var cfg=el("button");cfg.type="button";cfg.textContent="当前厂商设置";
+  cfg.addEventListener("click",function(){openSettings(n.provider||state.settings.active[kind]||"mock");});
+  var branch=el("button");branch.type="button";branch.textContent="运行下游分支";
+  branch.addEventListener("click",function(){runBranch(n.id);});
+  var remove=el("button","danger");remove.type="button";remove.textContent="删除节点";
+  remove.addEventListener("click",function(){removeNode(n.id);});
+  extraActions.appendChild(cfg);extraActions.appendChild(branch);extraActions.appendChild(remove);
+  advanced.appendChild(extraActions);
+  insBody.appendChild(advanced);
 
-  var rb=el("button","btn");rb.textContent=n.status==="running"?"生成中…":"▶ 生成 / 运行节点";
-  rb.disabled=n.status==="running";rb.addEventListener("click",function(){runNode(n.id);});
-  insBody.appendChild(rb);
-  var rb2=el("button","btn ghost");rb2.textContent="▶ 运行此节点及其下游分支";
-  rb2.addEventListener("click",function(){runBranch(n.id);});
-  insBody.appendChild(rb2);
-  var cb=el("button","btn ghost");cb.textContent="🗑 删除节点";cb.addEventListener("click",function(){removeNode(n.id);});
-  insBody.appendChild(cb);
-  var lg=el("div","log");lg.textContent=n.log||"";insBody.appendChild(lg);
+  var note=el("div","ie-note"+(n.status==="error"?" error":""));
+  var noteText=n.log||(n.status==="running"?"正在请求生成服务…":"");
+  if(noteText){note.textContent=noteText;note.classList.add("on");insBody.appendChild(note);}
+
+  var toolbar=el("div","ie-toolbar"),controls=el("div","ie-controls");
+  var availKind=kind==="any"?"":kind;
+  var avail=Object.keys(PROVIDERS).filter(function(pid){return !availKind||(PROVIDERS[pid].kinds||[]).indexOf(availKind)>=0;});
+  if(avail.indexOf(n.provider)<0){
+    var preferred=state.settings.active[kind]||state.settings.active[availKind]||"mock";
+    n.provider=avail.indexOf(preferred)>=0?preferred:(avail[0]||"mock");
+  }
+  var providerSelect=el("select","ie-select provider");providerSelect.title="生成厂商";
+  avail.forEach(function(pid){
+    var p=PROVIDERS[pid],o=el("option");
+    o.value=pid;o.textContent=(providerConfigured(pid)?"":"○ ")+p.label.split("（")[0]+(p.available===false?" · 待适配":"");
+    if(pid===n.provider)o.selected=true;providerSelect.appendChild(o);
+  });
+  providerSelect.addEventListener("change",function(){
+    n.provider=providerSelect.value;refresh(n);saveSoon();openInspector(n);
+  });
+  controls.appendChild(providerSelect);
+  var model=el("input","ie-model");model.value=n.model||"";model.placeholder="默认模型";model.title="模型名称，留空使用厂商默认";
+  model.addEventListener("input",function(){n.model=model.value;saveSoon();});controls.appendChild(model);
+  var typeChip=el("span","ie-chip");typeChip.textContent="▣ "+(dt.label||n.type);typeChip.title="当前生成类型";controls.appendChild(typeChip);
+
+  if(n.params.ratio!==undefined){
+    var ratioField=(dt.fields||[]).filter(function(f){return f.k==="ratio";})[0]||{};
+    var ratio=el("select","ie-select ratio");ratio.title="画面比例";
+    (ratioField.o||["16:9","9:16","1:1","3:4","4:3"]).forEach(function(v){var o=el("option");o.value=v;o.textContent=v;if(v===n.params.ratio)o.selected=true;ratio.appendChild(o);});
+    ratio.addEventListener("change",function(){n.params.ratio=ratio.value;saveSoon();refreshPreview(n);});controls.appendChild(ratio);
+  }
+  if(n.params.dur!==undefined||n.type==="video"){
+    var duration=el("input","ie-model");duration.type="number";duration.min="1";duration.max="60";duration.step="1";
+    duration.value=n.params.dur||5;duration.title="生成时长（秒）";duration.style.width="58px";duration.setAttribute("aria-label","生成时长秒数");
+    duration.addEventListener("input",function(){n.params.dur=duration.value;saveSoon();refreshPreview(n);});controls.appendChild(duration);
+    var sec=el("span","ie-chip");sec.textContent="秒";controls.appendChild(sec);
+  }
+  var settingsBtn=el("button","ie-tool");settingsBtn.type="button";settingsBtn.textContent="⚙";settingsBtn.title="更多参数";
+  settingsBtn.addEventListener("click",function(){advanced.classList.toggle("open");moreBtn.classList.toggle("on",advanced.classList.contains("open"));});
+  controls.appendChild(settingsBtn);toolbar.appendChild(controls);
+  var runBtn=el("button","ie-send");runBtn.type="button";runBtn.textContent="↑";runBtn.title="运行当前节点";
+  runBtn.disabled=n.status==="running";runBtn.setAttribute("aria-label",runBtn.title);
+  runBtn.addEventListener("click",function(){runNode(n.id);});toolbar.appendChild(runBtn);insBody.appendChild(toolbar);
   positionInspector(n);
   inspector.classList.add("open");
+  ensureInspectorInView();
 }
 function closeInspector(){inspector.classList.remove("open");}
 document.getElementById("ins-close").onclick=function(){closeInspector();select(null);};
@@ -1619,7 +1907,12 @@ function validateWorkflowData(d){
   var ids=Object.create(null),nodes=d.nodes.map(function(n){
     if(!n||typeof n!=="object"||(!NODETYPES[n.type]&&n.type!=="group")||typeof n.id!=="string"||! /^[A-Za-z0-9_-]{1,80}$/.test(n.id)||ids[n.id])throw new Error("节点类型或编号无效");
     ids[n.id]=1;["x","y","w","h"].forEach(function(k){if(n[k]!=null&&(!Number.isFinite(Number(n[k]))||Math.abs(Number(n[k]))>10000000))throw new Error("节点坐标或尺寸无效");});
-    var copy=Object.assign({},n);if(!copy.params||typeof copy.params!=="object")copy.params={};return copy;
+    var copy=Object.assign({},n);if(!copy.params||typeof copy.params!=="object")copy.params={};
+    if(copy.type!=="group"){
+      copy.w=Math.max(260,Math.min(900,Number(copy.w)||280));
+      copy.h=Math.max(240,Math.min(1200,Number(copy.h)||300));
+    }
+    return copy;
   });
   var links=d.links.filter(function(l){return l&&ids[l.from]&&ids[l.to]&&l.from!==l.to;}).map(function(l){return {id:String(l.id||id("l")),from:l.from,to:l.to};});
   var v=d.view||{},active=d.settings&&d.settings.active;return {nodes:nodes,links:links,view:{x:Number.isFinite(+v.x)?+v.x:0,y:Number.isFinite(+v.y)?+v.y:0,s:Math.max(.12,Math.min(4,Number.isFinite(+v.s)?+v.s:1))},active:active&&typeof active==="object"?active:null};
@@ -1628,16 +1921,16 @@ function load(){try{var raw=localStorage.getItem(STORE_KEY);if(!raw)return false
   state.nodes=safe.nodes;state.links=safe.links;state.view=safe.view;if(d.settings)state.settings=Object.assign(state.settings,d.settings);return true;}catch(e){return false;}}
 
 function seed(){
-  state.view={x:innerWidth/2-610,y:90,s:0.75};
-  var g=addGroup(170,0);g.title="第1场 · 雨夜";g.w=980;g.h=1120;
-  var a=addNode("script",520,60);a.params.topic="少女在暴雨夜捡到一只会说话的猫";
-  var b=addNode("charview",80,330);b.params.desc="16岁少女，黑色马尾，白衬衫，蓝色眼睛";
-  var s=addNode("storyboard",350,330);s.params.desc="雨夜初遇：远景建立环境，中景贴近人物，最后落在猫的眼睛";
-  var c=addNode("scene",620,330);c.params.desc="暴雨夜晚的旧街，屋檐积水，暖色路灯与冷色雨幕形成对比";
-  var i1=addNode("image",120,620);i1.params.prompt="暴雨夜晚的街道，少女蹲在屋檐下，一只橘猫看着她";
-  var i2=addNode("image",390,620);i2.params.prompt="橘猫特写，雨中发光眼睛，神秘氛围";
-  var e=addNode("video",390,880);e.params.motion="镜头缓慢推近少女脸部，雨滴溅落，猫尾摆动";
-  var f=addNode("audio",680,620);f.params.text="旁白：那晚的雨，下得比任何一天都要大。";
+  state.view={x:innerWidth/2-620,y:60,s:0.72};
+  var g=addGroup(150,-10);g.title="第1场 · 雨夜";g.w=1010;g.h=1320;
+  var a=addNode("script",515,50);a.params.topic="少女在暴雨夜捡到一只会说话的猫";
+  var b=addNode("charview",65,410);b.params.desc="16岁少女，黑色马尾，白衬衫，蓝色眼睛";
+  var s=addNode("storyboard",365,410);s.params.desc="雨夜初遇：远景建立环境，中景贴近人物，最后落在猫的眼睛";
+  var c=addNode("scene",665,410);c.params.desc="暴雨夜晚的旧街，屋檐积水，暖色路灯与冷色雨幕形成对比";
+  var i1=addNode("image",115,780);i1.params.prompt="暴雨夜晚的街道，少女蹲在屋檐下，一只橘猫看着她";
+  var i2=addNode("image",415,780);i2.params.prompt="橘猫特写，雨中发光眼睛，神秘氛围";
+  var e=addNode("video",415,1150);e.params.motion="镜头缓慢推近少女脸部，雨滴溅落，猫尾摆动";
+  var f=addNode("audio",715,780);f.params.text="旁白：那晚的雨，下得比任何一天都要大。";
   state.links.push({id:id("l"),from:a.id,to:b.id});
   state.links.push({id:id("l"),from:a.id,to:s.id});
   state.links.push({id:id("l"),from:a.id,to:c.id});

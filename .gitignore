@@ -4,3 +4,5 @@
 .chrome-test-dom/
 canvas-check.png
 api-center-check.png
+node_modules/
+dist/

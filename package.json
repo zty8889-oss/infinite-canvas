@@ -1,6 +1,6 @@
 {
   "name": "infinite-canvas-desktop",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "AI storyboarding and node canvas for Windows desktop",
   "author": "zty8889-oss",
@@ -56,8 +56,7 @@
       {
         "provider": "github",
         "owner": "zty8889-oss",
-        "repo": "infinite-canvas",
-        "releaseType": "release"
+        "repo": "infinite-canvas"
       }
     ]
   }

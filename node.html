@@ -826,6 +826,13 @@ registerProvider({
 });
 
 function sizeOf(ratio){return {"16:9":"1280x720","9:16":"720x1280","1:1":"1024x1024","3:4":"768x1024","4:3":"1024x768"}[ratio]||"1024x1024";}
+function videoImageUrl(input){
+  var value=String(input&&(input.url||input.b64)||"");
+  if(!value)return "";
+  if(/^data:|^https?:\/\//i.test(value))return value;
+  var mime=value.indexOf("/9j/")===0?"image/jpeg":value.indexOf("UklGR")===0?"image/webp":"image/png";
+  return "data:"+mime+";base64,"+value;
+}
 function isArkProxyLocation(){
   return ["192.168.2.19","127.0.0.1","localhost"].indexOf(window.location.hostname)>=0&&window.location.pathname.indexOf("/infinite-canvas/")===0;
 }
@@ -994,6 +1001,7 @@ registerProvider(makeHttp({
     var content=[{type:"text",text:ctx.prompt}];
     var first=ctx.inputs.find(function(i){return i.kind==="image"&&(i.url||i.b64);});
     if(first) content.push({type:"image_url",image_url:{url:first.url||("data:image/png;base64,"+first.b64)}});
+    if(first)content[content.length-1]={type:"image_url",image_url:{url:videoImageUrl(first)},role:"first_frame"};
     return {url:joinApiPath(cfg.baseUrl,"/contents/generations/tasks"),
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(cfg.apiKey||"")},
       body:JSON.stringify({model:ctx.model||cfg.model_video,content:content,

@@ -27,6 +27,8 @@
   #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
   #edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
   #edges path.wire{fill:none;stroke:#8ea7c2;stroke-width:2.5;vector-effect:non-scaling-stroke}
+  #edges path.wire-hit{fill:none;stroke:transparent;stroke-width:18;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer}
+  #edges path.wire-hit.selected{stroke:rgba(85,222,255,.16)}
   #edges path.temp{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}
   #nodes{position:absolute;left:0;top:0}
 
@@ -342,8 +344,11 @@
   #edges path.wire{stroke:#46545d;stroke-width:1.7}
   #edges path.wire-glow{fill:none;stroke:#20cfff;stroke-width:6;opacity:.11;filter:drop-shadow(0 0 5px rgba(32,207,255,.48));vector-effect:non-scaling-stroke;pointer-events:none}
   #edges path.wire-flow{fill:none;stroke:#73e8ff;stroke-width:1.8;stroke-dasharray:3 12;stroke-linecap:round;opacity:.9;filter:drop-shadow(0 0 4px rgba(62,218,255,.8));vector-effect:non-scaling-stroke;animation:wire-flow 1.1s linear infinite;pointer-events:none}
+  #edges .align-guide{fill:none;stroke:#54e7ff;stroke-width:1;stroke-dasharray:5 5;opacity:.9;filter:drop-shadow(0 0 4px rgba(62,218,255,.75));vector-effect:non-scaling-stroke;pointer-events:none}
   @keyframes wire-flow{to{stroke-dashoffset:-30}}
   #selection-box{position:absolute;display:none;z-index:12;border:1px solid rgba(80,220,255,.95);background:rgba(28,190,231,.12);box-shadow:0 0 16px rgba(48,205,246,.16);pointer-events:none}
+  .wire-delete{position:absolute;z-index:18;display:none;width:25px;height:25px;transform:translate(-50%,-50%);border:1px solid #54dfff;border-radius:50%;background:#17191d;color:#eafaff;font-size:17px;line-height:1;cursor:pointer;box-shadow:0 0 14px rgba(64,211,246,.32)}
+  .wire-delete.on{display:block}
   #viewport.marquee-mode{cursor:crosshair}
   .nd.multi-selected .nd-shell,.gframe.multi-selected{border-color:#57ddff;box-shadow:0 0 0 1px rgba(86,223,255,.32),0 0 19px rgba(49,203,239,.1)}
   @media(prefers-reduced-motion:reduce){#edges path.wire-flow{animation:none}}
@@ -561,7 +566,7 @@
   #inspector .ie-video-group{min-width:0}
   #inspector .ie-video-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;color:#888b93;font-size:10px}
   #inspector .ie-video-value{color:#d9dbe0;font-size:11px;font-weight:650}
-  #inspector .ie-video-options{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+  #inspector .ie-video-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
   #inspector .ie-video-option{min-width:0;height:32px;padding:0 4px;border:1px solid #303238;border-radius:7px;background:#1c1d22;
     color:#b9bbc2;font-family:inherit;font-size:10px;font-weight:500;line-height:1;cursor:pointer;white-space:nowrap}
   #inspector .ie-video-option:hover{border-color:#5c606a;color:#f1f2f4}
@@ -646,7 +651,7 @@
       <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0,0 L10,5 L0,10 z" fill="#67dfff"/>
       </marker>
-    </defs></svg>
+    </defs><g id="alignment-guides"></g></svg>
     <div id="nodes"></div>
     <div id="inspector">
       <div class="ih"><input id="ins-title" value="节点" autocomplete="off" spellcheck="false"><span class="pill" id="ins-type"></span>
@@ -667,6 +672,7 @@
   <button data-act="import">导入</button>
   <div class="sep"></div>
   <button data-act="group">🔲 编组</button>
+  <button data-act="connect" title="选中起点后点击目标节点">⛓ 连线</button>
   <button data-act="board">🗂 故事板</button>
   <button data-act="runall">▶▶ 一键运行</button>
   <button data-act="shortcuts" title="快捷键 · ?">⌘ 快捷键</button>
@@ -749,7 +755,7 @@
 
 var STORE_KEY="node-canvas-v3";
 var vp=document.getElementById("viewport"), world=document.getElementById("world"),
-    edgesEl=document.getElementById("edges"), nodesEl=document.getElementById("nodes"),
+    edgesEl=document.getElementById("edges"), alignmentGuidesEl=document.getElementById("alignment-guides"), nodesEl=document.getElementById("nodes"),
     ztext=document.getElementById("ztext"), toastEl=document.getElementById("toast"),
     inspector=document.getElementById("inspector"), insBody=document.getElementById("ins-body"),
     menu=document.getElementById("menu"), menuGrid=document.getElementById("menu-grid"),
@@ -766,7 +772,7 @@ var undoStack=[],redoStack=[],historyBytes=0,historyEnabled=false,historyWarned=
 function checkpoint(){if(!historyEnabled)return;var snap=JSON.stringify(state),bytes=snap.length*2;if(bytes>2*1024*1024){if(!historyWarned){toast("画布素材较大，本次操作暂不加入撤销记录");historyWarned=true;}return;}undoStack.push(snap);historyBytes+=bytes;redoStack=[];while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;updateHistoryButtons();}
 function restoreHistory(from,to){if(!from.length)return;var current=JSON.stringify(state),old=from.pop();to.push(current);if(from===undoStack)historyBytes-=old.length*2;else{historyBytes+=current.length*2;while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;}state=JSON.parse(old);renderAll();applyView();save();select(null);updateHistoryButtons();}
 function updateHistoryButtons(){var u=document.querySelector('[data-act="undo"]'),r=document.querySelector('[data-act="redo"]');if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length;}
-var selectedId=null,selectedIds=[],drag=null,menuAnchorId=null,connectMode=false;
+var selectedId=null,selectedIds=[],selectedLinkId=null,drag=null,menuAnchorId=null,connectMode=false;
 var imageSettingsPopover=null,imageSettingsAnchor=null,imageSettingsNode=null,imageSettingsChange=null;
 
 function id(p){return (p||"n")+Date.now().toString(36)+(uid++).toString(36);}
@@ -909,7 +915,7 @@ async function imageEditForm(ctx,model){
   return form;
 }
 function videoImageUrl(input){
-  var value=String(input&&(input.url||input.b64)||"");
+  var value=String(input&&(input.b64||input.url)||"");
   if(!value)return "";
   if(/^data:|^https?:\/\//i.test(value))return value;
   var mime=value.indexOf("/9j/")===0?"image/jpeg":value.indexOf("UklGR")===0?"image/webp":"image/png";
@@ -1203,6 +1209,7 @@ function applyView(){
   vp.style.backgroundSize=Math.max(10,g)+"px "+Math.max(10,g)+"px,"+Math.max(48,g*4)+"px "+Math.max(48,g*4)+"px";
   vp.style.backgroundPosition=state.view.x+"px "+state.view.y+"px,"+state.view.x+"px "+state.view.y+"px";
   ztext.textContent=Math.round(state.view.s*100)+"%";
+  if(selectedLinkId)positionSelectedWireDelete();
 }
 function s2w(cx,cy){return {x:(cx-state.view.x)/state.view.s,y:(cy-state.view.y)/state.view.s};}
 function zoomAt(cx,cy,f){var s0=state.view.s,s1=Math.min(4,Math.max(0.12,s0*f));if(s1===s0)return;
@@ -1343,19 +1350,70 @@ function renderAll(){
   positionInspector(nodeById(selectedId));
 }
 function drawWires(){
-  edgesEl.querySelectorAll("path.wire,path.wire-glow,path.wire-flow").forEach(function(p){p.remove();});
+  edgesEl.querySelectorAll("path.wire,path.wire-glow,path.wire-flow,path.wire-hit").forEach(function(p){p.remove();});
   var h="";
   state.links.forEach(function(l){
     var a=nodeById(l.from),b=nodeById(l.to);if(!a||!b)return;
     if(isHidden(a)||isHidden(b))return;
     var p1=portPos(a,"out"),p2=portPos(b,"in");
     var d=wire(p1,p2);
-    h+='<path class="wire-glow" d="'+d+'"/><path class="wire" d="'+d+'" marker-end="url(#arw)"/><path class="wire-flow" d="'+d+'"/>';
+    h+='<path class="wire-glow" d="'+d+'"/><path class="wire" d="'+d+'" marker-end="url(#arw)"/><path class="wire-flow" d="'+d+'"/><path class="wire-hit'+(l.id===selectedLinkId?' selected':'')+'" data-link-id="'+l.id+'" d="'+d+'"/>';
   });
   edgesEl.insertAdjacentHTML("beforeend",h);
+  positionSelectedWireDelete();
 }
+function positionSelectedWireDelete(){
+  var link=state.links.filter(function(item){return item.id===selectedLinkId;})[0],button=document.getElementById("wire-delete");
+  if(selectedLinkId&&!link){selectedLinkId=null;}
+  if(link&&button){
+    var a=nodeById(link.from),b=nodeById(link.to);
+    if(a&&b&&!isHidden(a)&&!isHidden(b)){
+      var p1=portPos(a,"out"),p2=portPos(b,"in");
+      button.style.left=(state.view.x+(p1.x+p2.x)*.5*state.view.s)+"px";
+      button.style.top=(state.view.y+(p1.y+p2.y)*.5*state.view.s)+"px";
+      button.classList.add("on");
+    }else{selectedLinkId=null;button.classList.remove("on");}
+  }else if(button)button.classList.remove("on");
+}
+edgesEl.addEventListener("pointerdown",function(e){if(e.target.closest&&e.target.closest(".wire-hit"))e.stopPropagation();});
+edgesEl.addEventListener("click",function(e){
+  var hit=e.target.closest&&e.target.closest(".wire-hit");if(!hit)return;
+  selectedLinkId=hit.dataset.linkId;drawWires();
+});
 function wire(p1,p2){var dx=Math.max(50,Math.abs(p2.x-p1.x)*0.5);
   return "M"+p1.x+","+p1.y+" C"+(p1.x+dx)+","+p1.y+" "+(p2.x-dx)+","+p2.y+" "+p2.x+","+p2.y;}
+function updateAlignmentGuides(guides){
+  if(!alignmentGuidesEl)return;
+  if(!guides){alignmentGuidesEl.innerHTML="";return;}
+  var top=s2w(0,0).y-100,bottom=s2w(0,innerHeight).y+100,left=s2w(0,0).x-100,right=s2w(innerWidth,0).x+100,paths="";
+  if(guides.x!==null)paths+='<path class="align-guide" d="M'+guides.x+','+top+' L'+guides.x+','+bottom+'"/>';
+  if(guides.y!==null)paths+='<path class="align-guide" d="M'+left+','+guides.y+' L'+right+','+guides.y+'"/>';
+  alignmentGuidesEl.innerHTML=paths;
+}
+function snapMovingItems(items){
+  if(!items||!items.length)return;
+  var moving={},bounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity};
+  items.forEach(function(item){
+    var n=item.n,box=nodesEl.querySelector('[data-id="'+n.id+'"]'),w=n.w||(box&&box.offsetWidth)||230,h=n.collapsed?31:(n.h||(box&&box.offsetHeight)||150);
+    moving[n.id]=true;bounds.left=Math.min(bounds.left,n.x);bounds.top=Math.min(bounds.top,n.y);
+    bounds.right=Math.max(bounds.right,n.x+w);bounds.bottom=Math.max(bounds.bottom,n.y+h);
+  });
+  function nearest(marks,targets,tolerance){
+    var best=null;
+    marks.forEach(function(mark){targets.forEach(function(target){var delta=target-mark,dist=Math.abs(delta);if(dist<=tolerance&&(!best||dist<best.dist))best={delta:delta,target:target,dist:dist};});});
+    return best;
+  }
+  var xMarks=[bounds.left,(bounds.left+bounds.right)/2,bounds.right],yMarks=[bounds.top,(bounds.top+bounds.bottom)/2,bounds.bottom],xTargets=[],yTargets=[];
+  state.nodes.forEach(function(n){
+    if(moving[n.id]||isHidden(n))return;
+    var box=nodesEl.querySelector('[data-id="'+n.id+'"]'),w=n.w||(box&&box.offsetWidth)||230,h=n.collapsed?31:(n.h||(box&&box.offsetHeight)||150);
+    xTargets.push(n.x,n.x+w/2,n.x+w);yTargets.push(n.y,n.y+h/2,n.y+h);
+  });
+  var sx=nearest(xMarks,xTargets,8/Math.max(.12,state.view.s)),sy=nearest(yMarks,yTargets,8/Math.max(.12,state.view.s));
+  var dx=sx?sx.delta:0,dy=sy?sy.delta:0;
+  if(dx||dy)items.forEach(function(item){item.n.x+=dx;item.n.y+=dy;var box=nodesEl.querySelector('[data-id="'+item.n.id+'"]');if(box){box.style.left=item.n.x+"px";box.style.top=item.n.y+"px";}});
+  updateAlignmentGuides({x:sx?sx.target:null,y:sy?sy.target:null});
+}
 
 function groupEl(g){
   var c=el("div","gframe"+(selectedIds.indexOf(g.id)>=0?" multi-selected":""));c.dataset.id=g.id;
@@ -1379,10 +1437,11 @@ function onGroupDown(e){
   if(e.target.closest(".gbtn"))return;
   e.stopPropagation();select(g.id);checkpoint();
   if(e.target.classList.contains("ghandle")){
-    drag={type:"gresize",n:g,el:c,sx:e.clientX,sy:e.clientY,w0:g.w,h0:g.h};vp.setPointerCapture(e.pointerId);return;
+    drag={type:"gresize",n:g,el:c,sx:e.clientX,sy:e.clientY,w0:g.w,h0:g.h};hideInspectorForDrag(drag);vp.setPointerCapture(e.pointerId);return;
   }
   var kids=childrenOf(g).map(function(k){return {n:k,x0:k.x,y0:k.y};});
   drag={type:"gmove",n:g,el:c,kids:kids,sx:e.clientX,sy:e.clientY,x0:g.x,y0:g.y};
+  hideInspectorForDrag(drag);
   vp.setPointerCapture(e.pointerId);
 }
 
@@ -1495,6 +1554,12 @@ function videoRequiresAdaptiveRatio(n){
   });
   return hasImage&&/seedance[-_. ]?2[-_. ]?5/i.test(videoModelForNode(n));
 }
+function videoResolutionOptions(n){
+  var model=videoModelForNode(n).toLowerCase().replace(/[_. ]/g,"-");
+  if(n.provider==="ark"&&/seedance.*(?:2-5-flash|2-0-(?:fast|mini))/.test(model))return ["480p","720p"];
+  if(n.provider==="ark"&&/seedance.*1-0/.test(model))return ["480p","720p","1080p"];
+  return ["480p","720p","1080p","4k"];
+}
 function safeText(n){
   if(!n)return "";
   if(n.output&&n.output.text)return String(n.output.text);
@@ -1606,16 +1671,18 @@ function finishConnect(targetId){
   var from=selectedId,to=targetId;
   if(!connectMode||!from||!to||from===to)return false;
   if(state.links.some(function(l){return l.from===from&&l.to===to;})){cancelConnect();toast("这两个节点已经连接");return true;}
-  checkpoint();state.links.push({id:id("l"),from:from,to:to});cancelConnect();drawWires();save();toast("节点已连接");return true;
+  checkpoint();state.links.push({id:id("l"),from:from,to:to});selectedLinkId=null;cancelConnect();drawWires();save();toast("节点已连接");return true;
 }
 function syncSelectionClasses(){
   [].forEach.call(nodesEl.children,function(e){e.classList.toggle("selected",e.dataset.id===selectedId);e.classList.toggle("multi-selected",selectedIds.indexOf(e.dataset.id)>=0);});
 }
 function select(i){
+  if(selectedLinkId){selectedLinkId=null;drawWires();}
   selectedId=i;selectedIds=i?[i]:[];syncSelectionClasses();
   if(i){var n=nodeById(i);focusNodeForEditing(n);openInspector(n);}else closeInspector();
 }
 function selectMultiple(ids){
+  if(selectedLinkId){selectedLinkId=null;drawWires();}
   var unique=[];ids.forEach(function(i){if(nodeById(i)&&unique.indexOf(i)<0)unique.push(i);});
   selectedIds=unique;selectedId=unique.length===1?unique[0]:null;syncSelectionClasses();
   if(selectedId){var n=nodeById(selectedId);focusNodeForEditing(n);openInspector(n);}else closeInspector();
@@ -1629,6 +1696,13 @@ function removeSelectedNodes(){
 }
 var spacePan=false;
 var selectionBox=el("div");selectionBox.id="selection-box";vp.appendChild(selectionBox);
+var wireDeleteButton=document.createElement("button");wireDeleteButton.id="wire-delete";wireDeleteButton.className="wire-delete";wireDeleteButton.type="button";wireDeleteButton.textContent="×";wireDeleteButton.title="删除这条连接线";vp.appendChild(wireDeleteButton);
+wireDeleteButton.addEventListener("pointerdown",function(e){e.stopPropagation();});
+wireDeleteButton.addEventListener("click",function(e){
+  e.stopPropagation();if(!selectedLinkId)return;
+  checkpoint();state.links=state.links.filter(function(link){return link.id!==selectedLinkId;});selectedLinkId=null;drawWires();save();
+});
+function hideInspectorForDrag(activeDrag){activeDrag.restoreInspector=inspector.classList.contains("open");inspector.classList.remove("open");}
 document.addEventListener("keydown",function(e){var a=document.activeElement||{};if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(a.tagName||"")&&!a.isContentEditable){spacePan=true;e.preventDefault();}});
 document.addEventListener("keyup",function(e){if(e.code==="Space")spacePan=false;});
 window.addEventListener("blur",function(){spacePan=false;});
@@ -1655,14 +1729,16 @@ function onNodeDown(e){
   if(e.target.classList.contains("port"))return;
   if(e.target.classList.contains("nhandle")){
     checkpoint();drag={type:"resize",n:n,el:c,sx:e.clientX,sy:e.clientY,w0:n.w||c.offsetWidth,h0:n.h||c.offsetHeight};
+    hideInspectorForDrag(drag);
     vp.setPointerCapture(e.pointerId);return;
   }
   if(multiSelected){
     checkpoint();drag={type:"multi-move",items:selectedIds.map(function(i){var item=nodeById(i);return item?{n:item,x0:item.x,y0:item.y}:null;}).filter(Boolean),sx:e.clientX,sy:e.clientY};
+    hideInspectorForDrag(drag);
     vp.setPointerCapture(e.pointerId);return;
   }
   checkpoint();
-  drag={type:"move",n:n,el:c,sx:e.clientX,sy:e.clientY,x0:n.x,y0:n.y};vp.setPointerCapture(e.pointerId);
+  drag={type:"move",n:n,el:c,sx:e.clientX,sy:e.clientY,x0:n.x,y0:n.y};hideInspectorForDrag(drag);vp.setPointerCapture(e.pointerId);
 }
 vp.addEventListener("pointerdown",function(e){
   if(e.target.closest("#toolbar")||e.target.closest("#inspector")||e.target.closest("#menu")||e.target.closest("#zoominfo")||e.target.closest("#board"))return;
@@ -1684,21 +1760,21 @@ vp.addEventListener("pointermove",function(e){
   }
   else if(drag.type==="move"){drag.n.x=drag.x0+(e.clientX-drag.sx)/state.view.s;
     drag.n.y=drag.y0+(e.clientY-drag.sy)/state.view.s;
-    drag.el.style.left=drag.n.x+"px";drag.el.style.top=drag.n.y+"px";drawWires();positionInspector(drag.n);}
+    snapMovingItems([{n:drag.n}]);drag.el.style.left=drag.n.x+"px";drag.el.style.top=drag.n.y+"px";drawWires();positionInspector(drag.n);}
   else if(drag.type==="resize"){drag.n.w=Math.max(180,Math.min(900,drag.w0+(e.clientX-drag.sx)/state.view.s));
     drag.n.h=Math.max(120,Math.min(1200,drag.h0+(e.clientY-drag.sy)/state.view.s));
     drag.el.style.width=drag.n.w+"px";drag.el.style.height=drag.n.h+"px";drawWires();positionInspector(drag.n);}
   else if(drag.type==="multi-move"){
     dx=(e.clientX-drag.sx)/state.view.s;dy=(e.clientY-drag.sy)/state.view.s;
     drag.items.forEach(function(item){item.n.x=item.x0+dx;item.n.y=item.y0+dy;var node=nodesEl.querySelector('[data-id="'+item.n.id+'"]');if(node){node.style.left=item.n.x+"px";node.style.top=item.n.y+"px";}});
-    drawWires();
+    snapMovingItems(drag.items);drawWires();
   }
   else if(drag.type==="gmove"){
     dx=(e.clientX-drag.sx)/state.view.s;dy=(e.clientY-drag.sy)/state.view.s;
     drag.n.x=drag.x0+dx;drag.n.y=drag.y0+dy;drag.el.style.left=drag.n.x+"px";drag.el.style.top=drag.n.y+"px";
     drag.kids.forEach(function(k){k.n.x=k.x0+dx;k.n.y=k.y0+dy;
       var ke=nodesEl.querySelector('[data-id="'+k.n.id+'"]');if(ke){ke.style.left=k.n.x+"px";ke.style.top=k.n.y+"px";}});
-    drawWires();positionInspector(drag.n);
+    snapMovingItems([{n:drag.n}].concat(drag.kids));drawWires();positionInspector(drag.n);
   }
   else if(drag.type==="gresize"){drag.n.w=Math.max(200,drag.w0+(e.clientX-drag.sx)/state.view.s);
     drag.n.h=Math.max(120,drag.h0+(e.clientY-drag.sy)/state.view.s);
@@ -1711,6 +1787,7 @@ vp.addEventListener("pointermove",function(e){
 });
 function endDrag(e){
   if(!drag)return;
+  var finishedDrag=drag;
   if(drag.type==="marquee"){
     var left=Math.min(drag.sx,e.clientX),top=Math.min(drag.sy,e.clientY),right=Math.max(drag.sx,e.clientX),bottom=Math.max(drag.sy,e.clientY);
     var ids=drag.additive.slice();
@@ -1734,7 +1811,9 @@ function endDrag(e){
     if(drag.type==="gresize"||drag.type==="gmove")renderAll();
   }
   if(drag.type==="pan")vp.classList.remove("panning");
+  if(finishedDrag.type==="move"||finishedDrag.type==="resize"||finishedDrag.type==="multi-move"||finishedDrag.type==="gmove"||finishedDrag.type==="gresize")updateAlignmentGuides(null);
   drag=null;
+  if(finishedDrag.restoreInspector&&selectedId){var selected=nodeById(selectedId);if(selected)openInspector(selected);}
 }
 vp.addEventListener("pointerup",endDrag);
 vp.addEventListener("pointercancel",endDrag);
@@ -1759,7 +1838,7 @@ document.addEventListener("keydown",function(e){
   var mod=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
   if(e.key==="Escape"){
     if(connectMode){cancelConnect();toast("已取消连线");}
-    hideMenu();closeInspector();select(null);board.classList.remove("on");document.getElementById("shortcuts").classList.remove("on");return;
+    selectedLinkId=null;drawWires();hideMenu();closeInspector();select(null);board.classList.remove("on");document.getElementById("shortcuts").classList.remove("on");return;
   }
   if(typing)return;
   if(mod&&key==="z"){e.preventDefault();restoreHistory(e.shiftKey?redoStack:undoStack,e.shiftKey?undoStack:redoStack);return;}
@@ -1780,6 +1859,7 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Tab"){e.preventDefault();showMenu(innerWidth/2-150,120,selectedId);return;}
   if(key==="g"&&!mod){e.preventDefault();var p=s2w(innerWidth/2,innerHeight/2);addGroup(p.x,p.y);toast("已创建分组框");return;}
   if(e.key==="/" ){e.preventDefault();showMenu(innerWidth/2-150,innerHeight/2-120,selectedId);return;}
+  if((e.key==="Delete"||e.key==="Backspace")&&selectedLinkId){e.preventDefault();wireDeleteButton.click();return;}
   if((e.key==="Delete"||e.key==="Backspace")&&selectedIds.length){e.preventDefault();removeSelectedNodes();}
 });
 document.addEventListener("focusin",function(e){if(e.target.matches("input,textarea,[contenteditable=true]"))checkpoint();});
@@ -1998,7 +2078,11 @@ function openInspector(n){
     var ratioGroup=videoGroup("比例"),restrictedRatio=videoRequiresAdaptiveRatio(n);
     optionRow(ratioGroup,"ratio",["adaptive","16:9","4:3","1:1","3:4","9:16","21:9"],["Auto","16:9","4:3","1:1","3:4","9:16","21:9"],restrictedRatio?["16:9","4:3","1:1","3:4","9:16","21:9"]:null);
     if(restrictedRatio){var ratioHint=el("div","ie-video-hint");ratioHint.textContent="Seedance 2.5 图生视频仅支持 Auto 比例";ratioGroup.appendChild(ratioHint);}
-    optionRow(videoGroup("清晰度"),"resolution",["480p","720p"],["480P","720P"]);
+    var resolutions=videoResolutionOptions(n);
+    if(resolutions.indexOf(String(n.params.resolution||"720p").toLowerCase())<0)n.params.resolution=resolutions.indexOf("720p")>=0?"720p":resolutions[0];
+    var resolutionGroup=videoGroup("清晰度");
+    optionRow(resolutionGroup,"resolution",resolutions,resolutions.map(function(value){return value.toUpperCase();}));
+    if(resolutions.length<4){var resolutionHint=el("div","ie-video-hint");resolutionHint.textContent="当前视频模型限制了可选清晰度";resolutionGroup.appendChild(resolutionHint);}
     var durationGroup=videoGroup("视频时长"),durationHead=durationGroup.querySelector(".ie-video-label"),bounds=videoDurationBounds(n);
     var durationValue=el("span","ie-video-value");durationHead.appendChild(durationValue);
     var duration=el("input","ie-video-range");duration.type="range";duration.min=String(bounds.min);duration.max=String(bounds.max);duration.step="1";
@@ -2127,6 +2211,8 @@ async function runNode(nid,opts){
   try{
     if(n.type==="video"&&videoRequiresAdaptiveRatio(n))n.params.ratio="adaptive";
     var inputs=await resolveWorkflowInputs(gatherInputs(n));
+    var preparedInputs=await prepareArkVideoInputs(inputs,pid,kind);inputs=preparedInputs.inputs;
+    if(preparedInputs.resized){n.log="参考图片已按火山方舟限制自动缩放，继续生成…";refresh(n);}
     var ctx={kind:kind,model:n.model||"",prompt:buildPrompt(n),inputs:inputs,params:n.params||{},cfg:(state.settings.providers[pid]||{})};
     if((n.type==="video"||n.type==="image")&&Number(n.params.count)>1){
       var requested=Math.max(1,Math.min(4,Number(n.params.count)||1));
@@ -2203,6 +2289,40 @@ async function resolveWorkflowInputs(inputs){
     var blob=await response.blob();if(blob.size>32*1024*1024)throw new Error("参考图片超过 32 MB，无法发送给生成服务");
     return Object.assign({},input,{url:await fileToDataUrl(blob),b64:""});
   }));
+}
+async function prepareArkVideoInputs(inputs,pid,kind){
+  if(pid!=="ark"||kind!=="video")return {inputs:inputs,resized:false};
+  var resized=false;
+  var prepared=await Promise.all(inputs.map(async function(input){
+    if(input.kind!=="image"||!(input.b64||input.url))return input;
+    var value=String(input.b64||input.url),source=value;
+    if(!/^data:|^https?:\/\//i.test(source)){
+      var mime=source.indexOf("/9j/")===0?"image/jpeg":source.indexOf("UklGR")===0?"image/webp":"image/png";
+      source="data:"+mime+";base64,"+source;
+    }
+    var blob;
+    try{var response=await fetch(source);if(!response.ok)return input;blob=await response.blob();}
+    catch(error){if(/^data:/i.test(source))throw new Error("无法读取视频参考图片："+(error.message||error));return input;}
+    if(blob.type&&!/^image\//i.test(blob.type))return input;
+    var bitmap;
+    try{bitmap=await createImageBitmap(blob);}catch(error){if(/^data:/i.test(source))throw new Error("无法解析视频参考图片，请换一张常见格式图片");return input;}
+    var width=bitmap.width,height=bitmap.height,pixels=width*height;
+    if(width<=6000&&height<=6000&&pixels<=36000000){bitmap.close();return input;}
+    var scale=Math.min(6000/width,6000/height,Math.sqrt(36000000/pixels))*.999,outputBlob=null;
+    for(var attempt=0;attempt<5;attempt++){
+      var canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.floor(width*scale));canvas.height=Math.max(1,Math.floor(height*scale));
+      var context=canvas.getContext("2d");context.fillStyle="#fff";context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+      outputBlob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/webp",Math.max(.72,.9-attempt*.04));});
+      if(!outputBlob)outputBlob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/jpeg",.86);});
+      if(outputBlob&&outputBlob.size<=24*1024*1024)break;
+      scale*=.84;
+    }
+    bitmap.close();
+    if(!outputBlob||outputBlob.size>24*1024*1024)throw new Error("参考图片压缩失败，请缩小图片后重试");
+    resized=true;
+    return Object.assign({},input,{url:await fileToDataUrl(outputBlob),b64:"",videoImageResized:true});
+  }));
+  return {inputs:prepared,resized:resized};
 }
 var dropDepth=0;
 function hasDraggedFiles(event){var types=event.dataTransfer&&event.dataTransfer.types;return !!types&&Array.prototype.indexOf.call(types,"Files")>=0;}
@@ -2333,7 +2453,7 @@ function applyTechIcons(){
     undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/>',redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/>',
     export:'<path d="M12 15V3m-5 5 5-5 5 5"/><path d="M5 13v7h14v-7"/>',import:'<path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 13v7h14v-7"/>',
     group:'<rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/>',
-    board:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18m0-13h13"/>',runall:'<path d="m5 4 11 8-11 8z"/><path d="M19 6v12"/>',shortcuts:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h1m3 0h1m3 0h1M7 13h1m3 0h1m3 0h1M8 16h8"/>',
+    connect:'<circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><path d="M9 12h6"/>',board:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18m0-13h13"/>',runall:'<path d="m5 4 11 8-11 8z"/><path d="M19 6v12"/>',shortcuts:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h1m3 0h1m3 0h1M7 13h1m3 0h1m3 0h1M8 16h8"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.4.8l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.4-.8l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.6l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.4-.8l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.4.8l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.6z"/>',
     clear:'<path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/>',tosb:'<path d="m12 3 8 5v8l-8 5-8-5V8z"/><circle cx="12" cy="12" r="3"/>'
   };
@@ -2341,7 +2461,7 @@ function applyTechIcons(){
     var key=b.dataset.act,d=paths[key];if(!d||b.dataset.iconReady)return;
     var label=b.textContent.trim();
     b.innerHTML=(key==="settings"?'<span id="api-toolbar-dot" class="api-dot"></span>':'')+
-      '<svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg><span>'+esc(label.replace(/^[+⤢↶↷🔲🗂▶🎬⌘]+\s*/,''))+'</span>';
+      '<svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg><span>'+esc(label.replace(/^[+⤢↶↷🔲🗂▶🎬⌘⛓]+\s*/,''))+'</span>';
     b.dataset.iconReady="1";
   });
   apiToolbarDot=document.getElementById("api-toolbar-dot");
@@ -2356,11 +2476,12 @@ document.getElementById("toolbar").addEventListener("click",function(e){
   else if(act==="export")exportFlow();
   else if(act==="import")document.getElementById("filejson").click();
   else if(act==="group"){var c=s2w(innerWidth/2,innerHeight/2);addGroup(c.x,c.y);toast("已建分组框，拖到节点上即可纳入"); }
+  else if(act==="connect")beginConnect();
   else if(act==="board")openBoard();
   else if(act==="runall")runAll();
   else if(act==="shortcuts")document.getElementById("shortcuts").classList.add("on");
   else if(act==="settings")openSettings();
-  else if(act==="clear"){if(confirm("清空画布？可使用撤销恢复")){checkpoint();state.nodes=[];state.links=[];select(null);renderAll();save();}}
+  else if(act==="clear"){if(confirm("清空画布？可使用撤销恢复")){checkpoint();state.nodes=[];state.links=[];selectedLinkId=null;select(null);renderAll();save();}}
 });
 var shortcutSheet=document.getElementById("shortcuts");
 shortcutSheet.querySelector(".sk-close").addEventListener("click",function(){shortcutSheet.classList.remove("on");});

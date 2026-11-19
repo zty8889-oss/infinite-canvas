@@ -804,9 +804,24 @@ function seed(){
   renderAll();
 }
 
+function clearStarterBoard(){
+  if(state.nodes.length!==5||state.edges.length!==4)return false;
+  var counts={};state.nodes.forEach(function(n){counts[n.type]=(counts[n.type]||0)+1;});
+  if(counts.char!==1||counts.scene!==1||counts.shot!==3)return false;
+  function has(type,key,value){return state.nodes.some(function(n){return n.type===type&&n[key]===value;});}
+  var shotPrompts=[
+    "教室全景，午后的光线洒在课桌上，主角坐在靠窗位置，安静翻书",
+    "主角手部特写，翻动书页，指尖停在某一页，光影流动",
+    "主角抬头，表情惊讶，镜头缓慢环绕，背景虚化，光斑闪烁"
+  ];
+  if(!has("char","prompt","少年，黑色短发，白色卫衣，蓝色眼睛，赛璐璐动画风格，正面全身，干净白底")||
+     !has("scene","prompt","日式高中教室，午后阳光，木质课桌，窗外樱花，动画背景，柔和光线")||
+     !shotPrompts.every(function(prompt){return has("shot","prompt",prompt);}))return false;
+  state.nodes=[];state.edges=[];state.view={x:0,y:0,s:1};selectedId=null;save();return true;
+}
+
 /* ---------- boot ---------- */
-if(!load()){ seed(); }
-else { renderAll(); }
+load();clearStarterBoard();renderAll();
 historyEnabled=true;updateHistoryButtons();
 applyView();
 setInterval(function(){refreshAllHeights();},1500);

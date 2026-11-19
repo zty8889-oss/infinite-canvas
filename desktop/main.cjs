@@ -1,16 +1,34 @@
 const { app, BrowserWindow, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
 const path = require("node:path");
+const { Transform } = require("node:stream");
+const { pipeline } = require("node:stream/promises");
 
 const PRODUCT_NAME = "无限画布";
 const DEFAULT_PORT = 43621;
 const MAX_BODY_BYTES = 64 * 1024 * 1024;
+const MAX_MEDIA_BYTES = 512 * 1024 * 1024;
 const API_PREFIX = "/infinite-canvas/ark-proxy";
 const MODEL_PROXY_PATH = "/infinite-canvas/model-proxy";
 const APP_ROOT = app.getAppPath();
+const MEDIA_TYPES = Object.freeze({
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/ogg": "ogv"
+});
+const MEDIA_MIME_TYPES = Object.freeze(Object.fromEntries(
+  Object.entries(MEDIA_TYPES).map(([mime, extension]) => [extension, mime])
+));
 let localServer;
 let mainWindow;
 const updateState = {
@@ -81,6 +99,115 @@ function sendJson(response, status, value) {
     "X-Content-Type-Options": "nosniff"
   });
   response.end(body);
+}
+
+function mediaPathname(pathname) {
+  const match = pathname.match(/^\/infinite-canvas\/media\/([0-9a-f-]{36})\.(jpg|png|webp|gif|avif|mp4|webm|mov|ogv)$/i);
+  return match ? { file: match[1].toLowerCase() + "." + match[2].toLowerCase(), extension: match[2].toLowerCase() } : null;
+}
+
+function mediaOriginAllowed(request, port) {
+  const expectedOrigin = "http://127.0.0.1:" + port;
+  return (!request.headers.origin || request.headers.origin === expectedOrigin)
+    && (!request.headers.referer || request.headers.referer.startsWith(expectedOrigin + "/"));
+}
+
+async function handleMediaRequest(request, response, pathname, port) {
+  if (!mediaOriginAllowed(request, port)) {
+    sendJson(response, 403, { error: { message: "仅允许桌面画布访问本地媒体" } });
+    return true;
+  }
+
+  if (pathname === "/infinite-canvas/media") {
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: { message: "上传媒体仅支持 POST" } });
+      return true;
+    }
+    const mime = String(request.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+    const extension = MEDIA_TYPES[mime];
+    const declaredLength = Number(request.headers["content-length"] || 0);
+    if (!extension) {
+      sendJson(response, 415, { error: { message: "仅支持常见图片和视频格式" } });
+      return true;
+    }
+    if (declaredLength > MAX_MEDIA_BYTES) {
+      sendJson(response, 413, { error: { message: "单个媒体文件不能超过 512 MB" } });
+      return true;
+    }
+
+    const mediaRoot = path.join(app.getPath("userData"), "media");
+    const name = crypto.randomUUID();
+    const tempPath = path.join(mediaRoot, name + ".tmp");
+    const finalName = name + "." + extension;
+    let length = 0;
+    try {
+      await fs.promises.mkdir(mediaRoot, { recursive: true });
+      const limiter = new Transform({
+        transform(chunk, encoding, callback) {
+          length += chunk.length;
+          if (length > MAX_MEDIA_BYTES) callback(Object.assign(new Error("单个媒体文件不能超过 512 MB"), { statusCode: 413 }));
+          else callback(null, chunk);
+        }
+      });
+      await pipeline(request, limiter, fs.createWriteStream(tempPath, { flags: "wx" }));
+      if (!length) throw Object.assign(new Error("上传文件为空"), { statusCode: 400 });
+      await fs.promises.rename(tempPath, path.join(mediaRoot, finalName));
+      sendJson(response, 201, { url: "media/" + finalName, bytes: length });
+    } catch (error) {
+      await fs.promises.rm(tempPath, { force: true }).catch(() => {});
+      if (!response.headersSent) sendJson(response, error.statusCode || 500, { error: { message: error.message || "媒体保存失败" } });
+      else response.destroy(error);
+    }
+    return true;
+  }
+
+  const media = mediaPathname(pathname);
+  if (!media) return false;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    sendJson(response, 405, { error: { message: "读取媒体仅支持 GET" } });
+    return true;
+  }
+  const filePath = path.join(app.getPath("userData"), "media", media.file);
+  try {
+    const stat = await fs.promises.stat(filePath);
+    let start = 0, end = stat.size - 1, status = 200;
+    const range = request.headers.range;
+    if (range) {
+      const match = range.match(/^bytes=(\d*)-(\d*)$/);
+      if (!match || (!match[1] && !match[2])) {
+        response.writeHead(416, { "Content-Range": "bytes */" + stat.size, "Accept-Ranges": "bytes" });
+        response.end();
+        return true;
+      }
+      if (match[1]) start = Number(match[1]);
+      if (match[2]) end = Number(match[2]);
+      else if (!match[1]) start = Math.max(0, stat.size - Number(match[2]));
+      if (!match[1]) end = stat.size - 1;
+      if (start > end || start >= stat.size) {
+        response.writeHead(416, { "Content-Range": "bytes */" + stat.size, "Accept-Ranges": "bytes" });
+        response.end();
+        return true;
+      }
+      end = Math.min(end, stat.size - 1);
+      status = 206;
+    }
+    const headers = {
+      "Content-Type": MEDIA_MIME_TYPES[media.extension],
+      "Content-Length": end - start + 1,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, max-age=31536000, immutable",
+      "Content-Disposition": "inline",
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "X-Content-Type-Options": "nosniff"
+    };
+    if (status === 206) headers["Content-Range"] = "bytes " + start + "-" + end + "/" + stat.size;
+    response.writeHead(status, headers);
+    if (request.method === "HEAD") response.end();
+    else fs.createReadStream(filePath, { start, end }).on("error", error => response.destroy(error)).pipe(response);
+  } catch {
+    sendJson(response, 404, { error: { message: "找不到已上传的媒体文件" } });
+  }
+  return true;
 }
 
 function isLoopback(address) {
@@ -285,6 +412,9 @@ async function handleRequest(request, response, port) {
   }
 
   const expectedOrigin = "http://127.0.0.1:" + port;
+  if (pathname === "/infinite-canvas/media" || pathname.startsWith("/infinite-canvas/media/")) {
+    if (await handleMediaRequest(request, response, pathname, port)) return;
+  }
   if (pathname.startsWith("/infinite-canvas/update/")) {
     if ((request.headers.origin && request.headers.origin !== expectedOrigin)
       || (request.headers.referer && !request.headers.referer.startsWith(expectedOrigin + "/"))) {

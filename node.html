@@ -485,6 +485,44 @@
     #inspector .ie-model{width:88px}
     #hint{display:none}
   }
+  #shortcuts{position:fixed;inset:0;z-index:85;display:none;align-items:center;justify-content:center;
+    padding:20px;background:rgba(7,9,13,.72);backdrop-filter:blur(9px)}
+  #shortcuts.on{display:flex}
+  #shortcuts .sk-panel{width:min(980px,96vw);max-height:min(720px,92vh);overflow:auto;background:#1b1d22;
+    border:1px solid #343840;border-radius:16px;box-shadow:0 28px 90px rgba(0,0,0,.58);color:#d7d9df}
+  #shortcuts .sk-head{display:flex;align-items:center;gap:10px;padding:19px 22px;border-bottom:1px solid #30333a}
+  #shortcuts .sk-mark{width:32px;height:32px;border:1px solid #24596a;border-radius:9px;display:grid;place-items:center;
+    color:#52d9ff;background:rgba(45,205,246,.08);box-shadow:0 0 18px rgba(45,205,246,.12)}
+  #shortcuts .sk-head strong{font-size:15px;color:#f0f2f6}
+  #shortcuts .sk-head small{display:block;margin-top:3px;color:#777c86;font-size:10px}
+  #shortcuts .sk-close{margin-left:auto;width:30px;height:30px;border:1px solid #393c43;border-radius:8px;
+    background:#24262c;color:#aeb2bb;font-size:19px;cursor:pointer}
+  #shortcuts .sk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 0 18px}
+  #shortcuts .sk-group{padding:8px 18px 0;border-right:1px solid #30333a}
+  #shortcuts .sk-group:last-child{border-right:0}
+  #shortcuts .sk-group h3{margin:7px 0 12px;color:#48d8ff;font-size:11px;font-weight:700;letter-spacing:.04em}
+  #shortcuts .sk-row{min-height:37px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#898e98;font-size:10.5px}
+  #shortcuts .sk-keys{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;color:#c9cbd1}
+  #shortcuts kbd{min-width:23px;padding:4px 6px;border:1px solid #3a3d45;border-radius:6px;background:#22242a;
+    color:#e0e2e7;font:500 10px inherit;text-align:center;white-space:nowrap;box-shadow:inset 0 -1px rgba(0,0,0,.35)}
+  #shortcuts .sk-plus{color:#555a64;font-size:9px}
+  #toolbar [data-act="shortcuts"]{color:#5bdcff;border-color:#245363;background:rgba(35,174,213,.09)}
+  #toolbar [data-act="shortcuts"]:hover{background:rgba(35,174,213,.17);color:#9beaff}
+  #toolbar button:not(.brand){transition:color .16s,border-color .16s,background .16s,box-shadow .16s}
+  #toolbar button:not(.brand):hover{box-shadow:inset 0 0 0 1px rgba(77,215,255,.19)}
+  #toolbar .tool-icon{width:15px;height:15px;flex:0 0 auto;color:#62dfff;filter:drop-shadow(0 0 4px rgba(73,207,243,.36))}
+  #toolbar button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .nd .hd .ic{color:#63dcff!important;text-shadow:0 0 10px rgba(57,208,255,.55);filter:none!important;opacity:1!important}
+  .nd .nd-shell{border-color:#49505b}
+  .nd.selected .nd-shell{border-color:#56dfff;box-shadow:0 0 0 1px rgba(86,223,255,.36),0 0 24px rgba(49,203,239,.12),0 18px 42px rgba(0,0,0,.32)}
+  .nd .port{border-color:#3f8497;color:#69dfff;box-shadow:0 0 12px rgba(52,201,235,.12),0 5px 14px rgba(0,0,0,.35)}
+  .nd .port:hover{border-color:#a6f0ff;box-shadow:0 0 17px rgba(72,221,255,.4)}
+  #viewport.connect-mode,.connect-mode .nd{cursor:crosshair!important}
+  #viewport.connect-mode .nd-shell{border-color:#49c8e6}
+  #inspector .ie-action:hover,#inspector .ie-tool:hover{border-color:#387b8c;box-shadow:0 0 12px rgba(52,201,235,.1)}
+  @media(max-width:760px){#shortcuts{padding:8px}#shortcuts .sk-panel{width:100%;max-height:96vh}
+    #shortcuts .sk-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    #shortcuts .sk-group:nth-child(2){border-right:0}#shortcuts .sk-group{padding-left:13px;padding-right:13px}}
 </style>
 </head>
 <body>
@@ -516,6 +554,7 @@
   <button data-act="group">🔲 编组</button>
   <button data-act="board">🗂 故事板</button>
   <button data-act="runall">▶▶ 一键运行</button>
+  <button data-act="shortcuts" title="快捷键 · ?">⌘ 快捷键</button>
   <div class="sep"></div>
   <button data-act="settings" id="api-toolbar-btn"><span id="api-toolbar-dot" class="api-dot"></span> API 接入</button>
   <button data-act="clear">清空</button>
@@ -532,6 +571,39 @@
   <div class="bt">🗂 故事板 · Storyboard</div>
   <button class="bclose" id="board-close">✕ 关闭</button>
   <div id="board-body"></div>
+</div>
+
+<div id="shortcuts" role="dialog" aria-modal="true" aria-label="画布快捷键">
+  <div class="sk-panel">
+    <div class="sk-head"><span class="sk-mark">⌘</span><div><strong>画布快捷键</strong><small>INFINITE CANVAS · KEYBOARD MAP</small></div>
+      <button class="sk-close" type="button" aria-label="关闭快捷键">×</button></div>
+    <div class="sk-grid">
+      <section class="sk-group"><h3>创作</h3>
+        <div class="sk-row"><span>新建节点</span><span class="sk-keys"><kbd>Tab</kbd></span></div>
+        <div class="sk-row"><span>生成当前节点</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>Enter</kbd></span></div>
+        <div class="sk-row"><span>复制节点和连线</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>D</kbd></span></div>
+        <div class="sk-row"><span>开始连接</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>L</kbd></span></div>
+        <div class="sk-row"><span>编组框</span><span class="sk-keys"><kbd>G</kbd></span></div>
+      </section>
+      <section class="sk-group"><h3>缩放</h3>
+        <div class="sk-row"><span>放大</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>+</kbd></span></div>
+        <div class="sk-row"><span>缩小</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>−</kbd></span></div>
+        <div class="sk-row"><span>适应画布</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>0</kbd></span></div>
+        <div class="sk-row"><span>搜索节点</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>F</kbd></span></div>
+      </section>
+      <section class="sk-group"><h3>移动画布</h3>
+        <div class="sk-row"><span>拖动画布</span><span class="sk-keys"><kbd>Space</kbd><i class="sk-plus">+</i><kbd>鼠标拖动</kbd></span></div>
+        <div class="sk-row"><span>触控板</span><span class="sk-keys">双指平移 / 捏合缩放</span></div>
+        <div class="sk-row"><span>滚轮缩放</span><span class="sk-keys"><kbd>滚轮</kbd></span></div>
+      </section>
+      <section class="sk-group"><h3>其他</h3>
+        <div class="sk-row"><span>撤销</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>Z</kbd></span></div>
+        <div class="sk-row"><span>重做</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>Shift</kbd><i class="sk-plus">+</i><kbd>Z</kbd></span></div>
+        <div class="sk-row"><span>删除选中节点</span><span class="sk-keys"><kbd>Del</kbd></span></div>
+        <div class="sk-row"><span>关闭 / 取消操作</span><span class="sk-keys"><kbd>Esc</kbd></span></div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <div id="modal"><div class="box">
@@ -554,8 +626,8 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v3.4
-   - LibTV 风格节点卡片与底部创作编辑器
+   AI漫剧节点工作台 v3.5
+   - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
    ========================================================================= */
@@ -579,7 +651,7 @@ var undoStack=[],redoStack=[],historyBytes=0,historyEnabled=false,historyWarned=
 function checkpoint(){if(!historyEnabled)return;var snap=JSON.stringify(state),bytes=snap.length*2;if(bytes>2*1024*1024){if(!historyWarned){toast("画布素材较大，本次操作暂不加入撤销记录");historyWarned=true;}return;}undoStack.push(snap);historyBytes+=bytes;redoStack=[];while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;updateHistoryButtons();}
 function restoreHistory(from,to){if(!from.length)return;var current=JSON.stringify(state),old=from.pop();to.push(current);if(from===undoStack)historyBytes-=old.length*2;else{historyBytes+=current.length*2;while(undoStack.length>30||historyBytes>16*1024*1024)historyBytes-=undoStack.shift().length*2;}state=JSON.parse(old);renderAll();applyView();save();select(null);updateHistoryButtons();}
 function updateHistoryButtons(){var u=document.querySelector('[data-act="undo"]'),r=document.querySelector('[data-act="redo"]');if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length;}
-var selectedId=null, drag=null, menuAnchorId=null;
+var selectedId=null, drag=null, menuAnchorId=null,connectMode=false;
 
 function id(p){return (p||"n")+Date.now().toString(36)+(uid++).toString(36);}
 function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
@@ -1182,6 +1254,28 @@ function removeNode(nid){
   if(selectedId===nid){selectedId=null;closeInspector();}
   renderAll();save();
 }
+function duplicateNode(nid){
+  var source=nodeById(nid);if(!source||source.type==="group")return;
+  checkpoint();
+  var copy=JSON.parse(JSON.stringify(source));copy.id=id();copy.title=(source.title||NODETYPES[source.type].label)+" 副本";
+  copy.x+=36;copy.y+=36;copy.status="idle";copy.output=null;copy.log="";
+  state.nodes.push(copy);
+  state.links.filter(function(l){return l.from===nid||l.to===nid;}).forEach(function(l){
+    state.links.push({id:id("l"),from:l.from===nid?copy.id:l.from,to:l.to===nid?copy.id:l.to});
+  });
+  renderAll();saveSoon();select(copy.id);toast("已复制节点和连接线");
+}
+function beginConnect(){
+  var n=nodeById(selectedId);if(!n||n.type==="group"){toast("先选中一个节点作为连线起点");return;}
+  connectMode=true;vp.classList.add("connect-mode");toast("连接模式：点击目标节点完成连线，按 Esc 取消");
+}
+function cancelConnect(){connectMode=false;vp.classList.remove("connect-mode");}
+function finishConnect(targetId){
+  var from=selectedId,to=targetId;
+  if(!connectMode||!from||!to||from===to)return false;
+  if(state.links.some(function(l){return l.from===from&&l.to===to;})){cancelConnect();toast("这两个节点已经连接");return true;}
+  checkpoint();state.links.push({id:id("l"),from:from,to:to});cancelConnect();drawWires();save();toast("节点已连接");return true;
+}
 function select(i){
   selectedId=i;
   [].forEach.call(nodesEl.children,function(e){e.classList.toggle("selected",e.dataset.id===i);});
@@ -1201,6 +1295,7 @@ vp.addEventListener("pointerdown",function(e){
 function onNodeDown(e){
   var c=e.currentTarget,n=nodeById(c.dataset.id);if(!n)return;
   if(e.target.closest(".run,.del,.col,.addchild"))return;
+  if(connectMode){e.stopPropagation();finishConnect(n.id);return;}
   e.stopPropagation();select(n.id);
   if(e.target.classList.contains("port")&&e.target.dataset.port==="out"){
     checkpoint();
@@ -1277,11 +1372,32 @@ document.getElementById("zin").onclick=function(){zoomAt(innerWidth/2,innerHeigh
 document.getElementById("zout").onclick=function(){zoomAt(innerWidth/2,innerHeight/2,1/1.2);};
 document.addEventListener("keydown",function(e){
   var ae=document.activeElement||{};
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){if(/INPUT|TEXTAREA|SELECT/.test(ae.tagName||"")||ae.isContentEditable)return;e.preventDefault();restoreHistory(e.shiftKey?redoStack:undoStack,e.shiftKey?undoStack:redoStack);return;}
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){if(/INPUT|TEXTAREA|SELECT/.test(ae.tagName||"")||ae.isContentEditable)return;e.preventDefault();restoreHistory(redoStack,undoStack);return;}
-  if(e.key==="/"&&!/INPUT|TEXTAREA|SELECT/.test(ae.tagName||"")){e.preventDefault();showMenu(innerWidth/2-150,innerHeight/2-120,selectedId);return;}
-  if(e.key==="Escape"){hideMenu();closeInspector();select(null);board.classList.remove("on");return;}
-  if((e.key==="Delete"||e.key==="Backspace")&&selectedId){if(/INPUT|TEXTAREA|SELECT/.test(ae.tagName||""))return;e.preventDefault();removeNode(selectedId);}
+  var typing=/INPUT|TEXTAREA|SELECT/.test(ae.tagName||"")||ae.isContentEditable;
+  var mod=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
+  if(e.key==="Escape"){
+    if(connectMode){cancelConnect();toast("已取消连线");}
+    hideMenu();closeInspector();select(null);board.classList.remove("on");document.getElementById("shortcuts").classList.remove("on");return;
+  }
+  if(typing)return;
+  if(mod&&key==="z"){e.preventDefault();restoreHistory(e.shiftKey?redoStack:undoStack,e.shiftKey?undoStack:redoStack);return;}
+  if(mod&&key==="y"){e.preventDefault();restoreHistory(redoStack,undoStack);return;}
+  if(mod&&key==="enter"){if(selectedId){e.preventDefault();runNode(selectedId);}return;}
+  if(mod&&key==="d"){if(selectedId){e.preventDefault();duplicateNode(selectedId);}return;}
+  if(mod&&key==="l"){e.preventDefault();beginConnect();return;}
+  if(mod&&key==="0"){e.preventDefault();fitView();return;}
+  if(mod&&(e.code==="Equal"||e.code==="NumpadAdd"||key==="+")){e.preventDefault();zoomAt(innerWidth/2,innerHeight/2,1.2);return;}
+  if(mod&&(e.code==="Minus"||e.code==="NumpadSubtract"||key==="-")){e.preventDefault();zoomAt(innerWidth/2,innerHeight/2,1/1.2);return;}
+  if(mod&&key==="f"){
+    e.preventDefault();var q=prompt("搜索节点名称或内容");if(!q)return;
+    var found=state.nodes.filter(function(n){return n.type!=="group"&&(String(n.title||"").toLowerCase().includes(q.toLowerCase())||summary(n).toLowerCase().includes(q.toLowerCase()));})[0];
+    if(found){select(found.id);state.view.x=innerWidth/2-(found.x+found.w/2)*state.view.s;state.view.y=Math.max(82,innerHeight*.16)-(found.y+found.h/2)*state.view.s;applyView();saveSoon();}
+    else toast("没有找到匹配节点");return;
+  }
+  if(e.key==="?"||(e.shiftKey&&e.code==="Slash")){e.preventDefault();document.getElementById("shortcuts").classList.toggle("on");return;}
+  if(e.key==="Tab"){e.preventDefault();showMenu(innerWidth/2-150,120,selectedId);return;}
+  if(key==="g"&&!mod){e.preventDefault();var p=s2w(innerWidth/2,innerHeight/2);addGroup(p.x,p.y);toast("已创建分组框");return;}
+  if(e.key==="/" ){e.preventDefault();showMenu(innerWidth/2-150,innerHeight/2-120,selectedId);return;}
+  if((e.key==="Delete"||e.key==="Backspace")&&selectedId){e.preventDefault();removeNode(selectedId);}
 });
 document.addEventListener("focusin",function(e){if(e.target.matches("input,textarea,[contenteditable=true]"))checkpoint();});
 
@@ -1549,7 +1665,7 @@ function levelize(order){
 var runAllFlag={running:false,cancel:false};
 function setRunBtn(){
   var b=document.querySelector('#toolbar button[data-act="runall"]');
-  if(b)b.textContent=runAllFlag.running?"⏹ 停止":"▶▶ 一键运行";
+  if(b){var label=b.querySelector("span:last-child");if(label)label.textContent=runAllFlag.running?"停止":"一键运行";else b.textContent=runAllFlag.running?"停止":"一键运行";}
 }
 function setProgress(done,total,label){
   if(!runAllFlag.running){runbar.classList.remove("on");return;}
@@ -1620,6 +1736,26 @@ board.addEventListener("click",function(e){
 /* =========================================================================
    10) 工具栏 & 设置
    ========================================================================= */
+function applyTechIcons(){
+  var paths={
+    menu:'<path d="M12 5v14M5 12h14"/>',fit:'<path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/><path d="M8 8h8v8H8z"/>',
+    undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/>',redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/>',
+    export:'<path d="M12 15V3m-5 5 5-5 5 5"/><path d="M5 13v7h14v-7"/>',import:'<path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 13v7h14v-7"/>',
+    group:'<rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/>',
+    board:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18m0-13h13"/>',runall:'<path d="m5 4 11 8-11 8z"/><path d="M19 6v12"/>',shortcuts:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h1m3 0h1m3 0h1M7 13h1m3 0h1m3 0h1M8 16h8"/>',
+    settings:'<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.4.8l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.4-.8l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.6l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.4-.8l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.4.8l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.6z"/>',
+    clear:'<path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/>',tosb:'<path d="m12 3 8 5v8l-8 5-8-5V8z"/><circle cx="12" cy="12" r="3"/>'
+  };
+  document.querySelectorAll('#toolbar button[data-act]').forEach(function(b){
+    var key=b.dataset.act,d=paths[key];if(!d||b.dataset.iconReady)return;
+    var label=b.textContent.trim();
+    b.innerHTML=(key==="settings"?'<span id="api-toolbar-dot" class="api-dot"></span>':'')+
+      '<svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg><span>'+esc(label.replace(/^[+⤢↶↷🔲🗂▶🎬⌘]+\s*/,''))+'</span>';
+    b.dataset.iconReady="1";
+  });
+  apiToolbarDot=document.getElementById("api-toolbar-dot");
+}
+applyTechIcons();
 document.getElementById("toolbar").addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;var act=b.dataset.act;
   if(act==="menu")showMenu(innerWidth/2-150,120,selectedId);
@@ -1631,9 +1767,13 @@ document.getElementById("toolbar").addEventListener("click",function(e){
   else if(act==="group"){var c=s2w(innerWidth/2,innerHeight/2);addGroup(c.x,c.y);toast("已建分组框，拖到节点上即可纳入"); }
   else if(act==="board")openBoard();
   else if(act==="runall")runAll();
+  else if(act==="shortcuts")document.getElementById("shortcuts").classList.add("on");
   else if(act==="settings")openSettings();
   else if(act==="clear"){if(confirm("清空画布？可使用撤销恢复")){checkpoint();state.nodes=[];state.links=[];select(null);renderAll();save();}}
 });
+var shortcutSheet=document.getElementById("shortcuts");
+shortcutSheet.querySelector(".sk-close").addEventListener("click",function(){shortcutSheet.classList.remove("on");});
+shortcutSheet.addEventListener("click",function(e){if(e.target===shortcutSheet)shortcutSheet.classList.remove("on");});
 document.getElementById("filejson").addEventListener("change",function(e){
   var f=e.target.files[0];if(!f)return;if(f.size>20*1024*1024){toast("文件超过20MB，无法导入");e.target.value="";return;}var r=new FileReader();
   r.onload=function(){try{var d=validateWorkflowData(JSON.parse(r.result));checkpoint();state.nodes=d.nodes;state.links=d.links;state.view=d.view;

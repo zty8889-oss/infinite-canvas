@@ -852,6 +852,70 @@
   #audioOutput button:hover{border-color:#4a4d55;color:#fff}
   #audioOutput button.on{border-color:#8f939c;background:#2a2c33;color:#fff}
   #audioOutput .ao-formats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+  /* ---- v4.5 顶部项目栏 / 设置 / 帮助 ---- */
+  #topLeft{position:fixed;left:14px;top:14px;z-index:50;display:flex;align-items:center;gap:8px}
+  #topLeft .tl-icon{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;
+    border:1px solid #2c2e34;background:rgba(19,20,24,.88);color:#c3c7cf;cursor:pointer;backdrop-filter:blur(12px)}
+  #topLeft .tl-icon:hover{background:#26282e;color:#fff}
+  #topLeft .tl-icon svg{width:17px;height:17px;display:block}
+  #canvasSwitch{height:34px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;border-radius:10px;
+    border:1px solid #2c2e34;background:rgba(19,20,24,.88);color:#e2e4e8;font-size:12.5px;cursor:pointer;backdrop-filter:blur(12px)}
+  #canvasSwitch:hover{background:#26282e;color:#fff}
+  #canvasSwitch .cs-caret{font-size:10px;color:#8b8e97}
+  #canvasMenu{position:fixed;z-index:60;display:none;width:290px;padding:8px;border-radius:14px;background:#17181c;
+    border:1px solid #34363c;box-shadow:0 22px 52px rgba(0,0,0,.55)}
+  #canvasMenu.on{display:block}
+  #canvasMenu .cm-search{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #2f3137;
+    border-radius:8px;background:#1c1d22;margin-bottom:6px}
+  #canvasMenu .cm-search input{flex:1;background:none;border:0;outline:none;color:#e6e7ea;font-size:12px}
+  #canvasMenu .cm-actions{display:flex;gap:6px;margin-bottom:6px}
+  #canvasMenu .cm-actions button{flex:1;height:30px;border:1px dashed #34363c;border-radius:8px;background:transparent;
+    color:#a9adb5;font-size:12px;cursor:pointer}
+  #canvasMenu .cm-actions button:hover{border-color:#4a4d55;color:#fff}
+  #canvasMenu .cm-item{display:flex;align-items:center;gap:8px;height:34px;padding:0 8px;border-radius:8px;cursor:pointer;
+    color:#dcdee3;font-size:12.5px}
+  #canvasMenu .cm-item:hover{background:#24262c}
+  #canvasMenu .cm-item.on{background:rgba(79,216,245,.12);color:#8fe9ff}
+  #canvasMenu .cm-item .cm-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #canvasMenu .cm-item .cm-rename,#canvasMenu .cm-item .cm-del{opacity:0;border:0;background:none;color:#8b8e97;cursor:pointer;font-size:12px}
+  #canvasMenu .cm-item:hover .cm-rename,#canvasMenu .cm-item:hover .cm-del{opacity:1}
+  #canvasMenu .cm-item input{flex:1;background:#101216;border:1px solid #2f9cb8;border-radius:6px;color:#e6e7ea;
+    font-size:12px;padding:3px 6px;outline:none}
+
+  #settingsModal,#helpModal{position:fixed;inset:0;z-index:125;display:none;align-items:center;justify-content:center;
+    padding:24px;background:rgba(4,6,10,.72);backdrop-filter:blur(6px)}
+  #settingsModal.on,#helpModal.on{display:flex}
+  .sm-box{width:min(760px,94vw);height:min(560px,86vh);display:flex;flex-direction:column;overflow:hidden;
+    background:#16171b;border:1px solid #2f3137;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.62)}
+  .sm-head{display:flex;align-items:center;padding:16px 18px 12px;font-size:14.5px;font-weight:600;color:#eef0f4}
+  .sm-head button{margin-left:auto;width:30px;height:30px;border:1px solid #34363c;border-radius:8px;background:#22242a;
+    color:#aeb2bc;font-size:17px;cursor:pointer}
+  .sm-body{flex:1;display:flex;min-height:0}
+  .sm-nav{width:170px;padding:6px 10px 14px;border-right:1px solid #26282d}
+  .sm-nav button{display:block;width:100%;height:34px;margin-bottom:4px;border:0;border-radius:8px;background:transparent;
+    color:#b8bcc4;font-size:12.5px;text-align:left;padding:0 10px;cursor:pointer}
+  .sm-nav button:hover{background:#21232a;color:#fff}
+  .sm-nav button.on{background:rgba(79,216,245,.12);color:#8fe9ff}
+  .sm-pane{flex:1;overflow:auto;padding:14px 18px 20px}
+  .sm-pane h4{margin:0 0 6px;font-size:13.5px;color:#eef0f4}
+  .sm-pane p{margin:0 0 14px;font-size:12.5px;color:#9a9ea7;line-height:1.8}
+  .sm-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #2c2e34;border-radius:10px;margin-bottom:10px;background:#1a1b20}
+  .sm-row .sm-row-text{flex:1;min-width:0}
+  .sm-row b{display:block;font-size:12.5px;color:#e2e4e8;font-weight:600;margin-bottom:3px}
+  .sm-row small{display:block;font-size:11.5px;color:#8b8e97}
+  .sm-row button{height:30px;padding:0 12px;border:1px solid #2c9cb8;border-radius:8px;background:#147d98;color:#fff;
+    font-size:12px;cursor:pointer;white-space:nowrap}
+  .sm-row button.ghost{background:#23252b;border-color:#3a3d45;color:#c8cbd3}
+
+  #helpModal .hp-box{width:min(860px,94vw);height:min(760px,88vh);display:flex;flex-direction:column;overflow:hidden;
+    background:#16171b;border:1px solid #2f3137;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.62)}
+  #helpModal .hp-body{flex:1;overflow:auto;padding:4px 26px 26px}
+  #helpModal h3{margin:22px 0 8px;font-size:14px;color:#8fe9ff}
+  #helpModal p,#helpModal li{font-size:12.8px;color:#c3c7cf;line-height:1.9}
+  #helpModal ul{margin:0 0 4px;padding-left:18px}
+  #helpModal kbd{font-family:inherit;font-size:11.5px;color:#dfe6f3;background:#24262c;border:1px solid #34363c;
+    border-radius:5px;padding:1px 6px}
 </style>
 </head>
 <body>
@@ -886,10 +950,9 @@
 </div>
 <div id="barCenter" class="bar" role="toolbar" aria-label="节点工具">
   <button data-act="menu" class="primary" title="添加节点">＋</button>
-  <button data-act="panmode" class="iconOnly" title="移动画布：拖拽任意位置平移">✋</button>
-  <button data-act="history" class="iconOnly" title="生成历史">◷</button>
-  <button data-act="shortcuts" class="iconOnly" title="快捷键 · ?">⌘</button>
-  <button data-act="more" class="iconOnly" title="更多操作">⋯</button>
+  <button data-act="panmode" class="iconOnly" title="移动工具：点击切换为抓手，拖拽平移画布">✋</button>
+  <button data-act="shortcuts" class="iconOnly" title="快捷键">⌘</button>
+  <button data-act="help" class="iconOnly" title="帮助文档">?</button>
 </div>
 <div id="morePopover"></div>
 <div id="zoomPopover">
@@ -902,6 +965,38 @@
 <canvas id="minimap" width="380" height="252" aria-label="画布地图"></canvas>
 <div id="historyModal"><div class="hm-box"><div class="hm-head">生成历史<button type="button" id="historyClose" aria-label="关闭">×</button></div><div class="hm-list" id="historyList"></div></div></div>
 <div id="audioOutput"></div>
+
+<div id="topLeft">
+  <button id="exitProject" class="tl-icon" type="button" title="退出项目" aria-label="退出项目">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h5v16h-5"/><path d="M3 12h11"/><path d="m10 8 4 4-4 4"/></svg>
+  </button>
+  <button id="openSettings" class="tl-icon" type="button" title="设置" aria-label="设置">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.4 2.4-1.8-.6a7 7 0 0 1-1.5.9l-.3 1.9h-2.8l-.3-1.9a7 7 0 0 1-1.5-.9l-1.8.6-1.4-2.4.1-.1A1.7 1.7 0 0 0 5.4 15a7 7 0 0 1 0-1.7 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.4-2.4 1.8.6a7 7 0 0 1 1.5-.9l.3-1.9h2.8l.3 1.9a7 7 0 0 1 1.5.9l1.8-.6 1.4 2.4-.1.1a1.7 1.7 0 0 0-.3 1.9 7 7 0 0 1 0 1.7z"/></svg>
+  </button>
+  <button id="canvasSwitch" type="button" title="切换画布"><span class="cs-name">画布 1</span><span class="cs-caret">▾</span></button>
+</div>
+<div id="canvasMenu">
+  <div class="cm-search"><span aria-hidden="true">⌕</span><input id="cmSearch" type="text" placeholder="搜索画布" autocomplete="off"></div>
+  <div class="cm-actions"><button id="cmNew" type="button">＋ 新建画布</button><button id="cmDuplicate" type="button">⧉ 复制当前</button></div>
+  <div id="cmList"></div>
+</div>
+
+<div id="settingsModal">
+  <div class="sm-box">
+    <div class="sm-head">设置<button id="settingsClose" type="button" aria-label="关闭">×</button></div>
+    <div class="sm-body">
+      <nav class="sm-nav">
+        <button data-pane="update" type="button" class="on">软件更新</button>
+        <button data-pane="api" type="button">API 接入</button>
+        <button data-pane="data" type="button">数据与画布</button>
+        <button data-pane="about" type="button">关于</button>
+      </nav>
+      <div class="sm-pane" id="smPane"></div>
+    </div>
+  </div>
+</div>
+
+<div id="helpModal"><div class="hp-box"><div class="sm-head">帮助文档<button id="helpClose" type="button" aria-label="关闭">×</button></div><div class="hp-body" id="helpBody"></div></div></div>
 
 <div id="menu">
   <div class="mt">选择节点类型（双击画布也可呼出）</div>
@@ -992,7 +1087,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.4
+   AI漫剧节点工作台 v4.5
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -3005,7 +3100,8 @@ function applyTechIcons(){
     minimap:'<rect x="3" y="4" width="18" height="16" rx="2"/><rect x="6" y="8" width="7" height="4" rx="1"/>',
     snap:'<path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM16 16h4v4h-4zM10 4h4M10 16h4M4 10v4M16 10v4"/>',
     hidewires:'<path d="M4 12h6a3 3 0 0 0 3-3V6"/><path d="M20 12h-6a3 3 0 0 0-3 3v3"/>',
-    zoommenu:'<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/>'
+    zoommenu:'<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/>',
+    help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.1 1-1.1 1.9"/><path d="M12 17h.01"/>'
   };
   document.querySelectorAll('#barLeft button[data-act],#barCenter button[data-act]').forEach(function(b){
     var key=b.dataset.act,d=paths[key];if(!d||b.dataset.iconReady)return;
@@ -3032,6 +3128,7 @@ function buildMorePopover(){
   morePopover.innerHTML='<button data-act="export">⇧ 导出工作流</button><button data-act="import">⇩ 导入 JSON</button>'+
     '<div class="pop-sep"></div><button data-act="group">🔲 编组</button><button data-act="connect">⛓ 连线</button>'+
     '<button data-act="board">🗂 故事板</button><button data-act="runall">▶ 一键运行</button>'+
+    '<div class="pop-sep"></div><button data-act="history">◷ 生成历史</button><button data-act="help">? 帮助文档</button>'+
     '<div class="pop-sep"></div><button data-act="settings" id="api-toolbar-btn"><span id="api-toolbar-dot" class="api-dot"></span>API 接入</button>'+
     '<button data-act="clear">🗑 清空画布</button><a href="./index.html" style="text-decoration:none"><button data-act="tosb">🎬 分镜模式</button></a>';
   apiToolbarDot=document.getElementById("api-toolbar-dot");
@@ -3179,12 +3276,13 @@ function handleBarAction(act,btn){
   else if(act==="redo")restoreHistory(redoStack,undoStack);
   else if(act==="more")togglePopover(morePopover,btn);
   else if(act==="assets")toggleAssets(btn);
-  else if(act==="arrange"){var arranged=window.infiniteCanvas.arrangeCanvas();if(arranged&&arranged.ok)toast("已按层级整理画布");else toast("画布上没有可整理的节点");}
+  else if(act==="arrange"){var arranged=window.infiniteCanvas.arrangeCanvas();if(arranged&&arranged.ok){fitView();toast("已整理画布，可按 Ctrl+Z 撤销");}else toast("画布上没有可整理的节点");}
   else if(act==="minimap")toggleMinimap(btn);
   else if(act==="snap")toggleSnap(btn);
   else if(act==="hidewires")toggleWires(btn);
   else if(act==="panmode"){uiFlags.hand=!uiFlags.hand;vp.classList.toggle("hand-mode",uiFlags.hand);btn.classList.toggle("on",uiFlags.hand);toast(uiFlags.hand?"移动模式：可拖拽任意位置平移":"已退出移动模式");}
   else if(act==="history")openHistory();
+  else if(act==="help"){openHelp();closeFloatingPanels();}
   else if(act==="export"){exportFlow();closeFloatingPanels();}
   else if(act==="import"){document.getElementById("filejson").click();closeFloatingPanels();}
   else if(act==="group"){var c=s2w(innerWidth/2,innerHeight/2);addGroup(c.x,c.y);toast("已建分组框，拖到节点上即可纳入");closeFloatingPanels();}
@@ -3533,7 +3631,9 @@ function save(){
   try{
     // 自描述文件：旧版本读取时会忽略 format/savedAt 字段，仍能兼容打开
     var payload={format:CANVAS_FORMAT,savedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,view:state.view,settings:state.settings,history:(state.history||[]).slice(0,60)};
-    localStorage.setItem(STORE_KEY,JSON.stringify(payload));return true;
+    localStorage.setItem(STORE_KEY,JSON.stringify(payload));
+    syncCurrentCanvas();persistCanvasBook();
+    return true;
   }catch(e){toast("本机存储空间不足，请导出工作流备份并移除大素材");return false;}
 }
 function validateWorkflowData(d){
@@ -3863,13 +3963,245 @@ presetModal.addEventListener("click",function(event){
 loadPresetStore();
 
 /* =========================================================================
+   11.6) 画布列表 / 设置 / 帮助（v4.5）
+   ========================================================================= */
+var APP_VERSION="1.0.13";
+var CANVAS_LIST_KEY="ic-canvases-v1";
+var canvasBook={current:"",items:[]};
+function persistCanvasBook(){
+  try{localStorage.setItem(CANVAS_LIST_KEY,JSON.stringify(canvasBook));}
+  catch(_){toast("本机存储空间不足，画布列表未能保存");}
+}
+function loadCanvasBook(){
+  try{
+    var raw=localStorage.getItem(CANVAS_LIST_KEY);
+    if(!raw)return false;
+    var data=JSON.parse(raw);
+    if(!data||!Array.isArray(data.items)||!data.items.length)return false;
+    canvasBook={current:data.current||data.items[0].id,items:data.items};
+    if(!canvasBook.items.some(function(item){return item.id===canvasBook.current;}))canvasBook.current=canvasBook.items[0].id;
+    return true;
+  }catch(_){return false;}
+}
+function currentCanvasRecord(){
+  return canvasBook.items.filter(function(item){return item.id===canvasBook.current;})[0]||canvasBook.items[0]||null;
+}
+function ensureCanvasBook(){
+  if(loadCanvasBook())return;
+  var id="c"+Date.now().toString(36);
+  canvasBook={current:id,items:[{id:id,name:"画布 1",nodes:[],links:[],view:{x:0,y:0,s:1},history:[],updatedAt:Date.now()}]};
+  persistCanvasBook();
+}
+function syncCurrentCanvas(){
+  var record=currentCanvasRecord();if(!record)return;
+  record.nodes=state.nodes;record.links=state.links;record.view=state.view;
+  record.settings=state.settings;record.history=state.history||[];record.updatedAt=Date.now();
+}
+function updateCanvasLabel(){
+  var record=currentCanvasRecord(),label=document.querySelector("#canvasSwitch .cs-name");
+  if(label)label.textContent=record?record.name:"画布 1";
+}
+function applyCanvasRecord(record){
+  state.nodes=record.nodes||[];state.links=record.links||[];
+  state.view=record.view||{x:0,y:0,s:1};state.history=record.history||[];
+  if(record.settings)state.settings=Object.assign(state.settings,record.settings);
+  selectedId=null;selectedIds=[];selectedLinkId=null;
+  closeInspector();renderAll();applyView();updateCanvasLabel();
+}
+function switchCanvas(id){
+  if(!canvasBook.items.some(function(item){return item.id===id;}))return;
+  syncCurrentCanvas();
+  canvasBook.current=id;persistCanvasBook();
+  var record=currentCanvasRecord();
+  applyCanvasRecord(record);
+  save();toast("已切换到「"+record.name+"」");
+}
+function createCanvas(name){
+  syncCurrentCanvas();
+  var id="c"+Date.now().toString(36);
+  canvasBook.items.push({id:id,name:name||("画布 "+(canvasBook.items.length+1)),nodes:[],links:[],view:{x:0,y:0,s:1},history:[],updatedAt:Date.now()});
+  persistCanvasBook();switchCanvas(id);
+}
+function duplicateCanvas(){
+  syncCurrentCanvas();
+  var source=currentCanvasRecord();if(!source)return;
+  var id="c"+Date.now().toString(36);
+  canvasBook.items.push({id:id,name:source.name+" 副本",nodes:JSON.parse(JSON.stringify(state.nodes)),links:JSON.parse(JSON.stringify(state.links)),view:Object.assign({},state.view),settings:JSON.parse(JSON.stringify(state.settings||{})),history:[],updatedAt:Date.now()});
+  persistCanvasBook();switchCanvas(id);
+}
+function deleteCanvas(id){
+  if(canvasBook.items.length<=1){toast("至少保留一个画布");return;}
+  var record=canvasBook.items.filter(function(item){return item.id===id;})[0];
+  if(!record)return;
+  if(!confirm("删除画布「"+record.name+"」？删除后不可恢复。"))return;
+  canvasBook.items=canvasBook.items.filter(function(item){return item.id!==id;});
+  if(canvasBook.current===id)canvasBook.current=canvasBook.items[0].id;
+  persistCanvasBook();
+  applyCanvasRecord(currentCanvasRecord());save();renderCanvasMenu();toast("画布已删除");
+}
+function renameCanvas(id,name){
+  var record=canvasBook.items.filter(function(item){return item.id===id;})[0];
+  if(!record)return;
+  record.name=String(name||"").trim()||record.name;
+  persistCanvasBook();updateCanvasLabel();renderCanvasMenu();
+}
+function renderCanvasMenu(){
+  var list=document.getElementById("cmList");if(!list)return;
+  var query=String((document.getElementById("cmSearch")||{}).value||"").trim().toLowerCase();
+  list.innerHTML="";
+  canvasBook.items.filter(function(record){return !query||record.name.toLowerCase().indexOf(query)>=0;}).forEach(function(record){
+    var item=el("div","cm-item"+(record.id===canvasBook.current?" on":""));
+    var icon=el("span");icon.textContent="⛶";
+    var name=el("span","cm-name");name.textContent=record.name;
+    var rename=el("button","cm-rename");rename.type="button";rename.textContent="✎";rename.title="重命名";
+    rename.addEventListener("click",function(event){
+      event.stopPropagation();
+      var input=el("input");input.value=record.name;
+      name.replaceWith(input);input.focus();input.select();
+      function commit(){renameCanvas(record.id,input.value);}
+      input.addEventListener("keydown",function(e){if(e.key==="Enter")commit();if(e.key==="Escape")renderCanvasMenu();});
+      input.addEventListener("blur",commit);
+    });
+    var del=el("button","cm-del");del.type="button";del.textContent="🗑";del.title="删除画布";
+    del.addEventListener("click",function(event){event.stopPropagation();deleteCanvas(record.id);});
+    item.appendChild(icon);item.appendChild(name);item.appendChild(rename);item.appendChild(del);
+    item.addEventListener("click",function(){closeCanvasMenu();if(record.id!==canvasBook.current)switchCanvas(record.id);});
+    list.appendChild(item);
+  });
+}
+function openCanvasMenu(anchor){
+  var menu=document.getElementById("canvasMenu");
+  if(menu.classList.contains("on")){menu.classList.remove("on");return;}
+  closeFloatingPanels();
+  renderCanvasMenu();
+  menu.classList.add("on");
+  var box=anchor.getBoundingClientRect();
+  menu.style.left=Math.max(8,Math.min(box.left,innerWidth-300))+"px";
+  menu.style.top=(box.bottom+8)+"px";
+  var search=document.getElementById("cmSearch");if(search){search.value="";search.focus();}
+}
+function closeCanvasMenu(){var menu=document.getElementById("canvasMenu");if(menu)menu.classList.remove("on");}
+
+/* ---- 设置 ---- */
+var settingsModal=document.getElementById("settingsModal");
+var smPane=document.getElementById("smPane");
+var settingsPane="update";
+function openPreferences(){
+  settingsModal.classList.add("on");
+  renderSettingsPane(settingsPane);
+}
+function closePreferences(){settingsModal.classList.remove("on");}
+function renderSettingsPane(pane){
+  settingsPane=pane;
+  document.querySelectorAll(".sm-nav button").forEach(function(button){button.classList.toggle("on",button.dataset.pane===pane);});
+  if(pane==="update"){
+    smPane.innerHTML='<h4>软件更新</h4><p>当前版本 <b>'+APP_VERSION+'</b>。检查更新会读取最新发布版本；网络较慢时会自动中止下载，可改用发布页手动安装。</p>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>检查更新</b><small>使用桌面版内置更新器检查并下载</small></div><button id="smCheckUpdate" type="button">检查更新</button></div>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>发布页</b><small>手动下载最新安装包</small></div><button class="ghost" id="smOpenRelease" type="button">打开发布页</button></div>';
+    document.getElementById("smCheckUpdate").addEventListener("click",function(){
+      var trigger=document.getElementById("software-update-button");
+      if(trigger){trigger.click();closePreferences();}
+      else toast("网页版没有内置更新，请用发布页下载桌面版");
+    });
+    document.getElementById("smOpenRelease").addEventListener("click",function(){
+      window.open("https://github.com/zty8889-oss/infinite-canvas/releases/latest","_blank","noopener");
+    });
+    return;
+  }
+  if(pane==="api"){
+    smPane.innerHTML='<h4>API 接入</h4><p>在这里配置文本、图片、视频、语音服务商与默认线路。Key 只保存在本机，不随工作流导出。</p>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>API 接入中心</b><small>配置服务商、模型与默认线路</small></div><button id="smOpenApi" type="button">打开</button></div>';
+    document.getElementById("smOpenApi").addEventListener("click",function(){closePreferences();openSettings();});
+    return;
+  }
+  if(pane==="data"){
+    smPane.innerHTML='<h4>数据与画布</h4><p>当前共有 <b>'+canvasBook.items.length+'</b> 个画布，本机浏览器/桌面端保存，不上传服务器。</p>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>导出工作流</b><small>导出当前画布为 JSON（不含 Key）</small></div><button id="smExport" type="button">导出</button></div>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>导入工作流</b><small>导入 JSON 覆盖当前画布</small></div><button class="ghost" id="smImport" type="button">导入</button></div>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>清空当前画布</b><small>可用 Ctrl+Z 撤销</small></div><button class="ghost" id="smClear" type="button">清空</button></div>';
+    document.getElementById("smExport").addEventListener("click",exportFlow);
+    document.getElementById("smImport").addEventListener("click",function(){document.getElementById("filejson").click();closePreferences();});
+    document.getElementById("smClear").addEventListener("click",function(){if(confirm("清空当前画布？可使用撤销恢复")){checkpoint();state.nodes=[];state.links=[];selectedLinkId=null;select(null);renderAll();save();closePreferences();}});
+    return;
+  }
+  smPane.innerHTML='<h4>关于</h4><p>无限画布 · AI 漫剧工作台</p>'+
+    '<div class="sm-row"><div class="sm-row-text"><b>当前版本</b><small>v'+APP_VERSION+'</small></div></div>'+
+    '<div class="sm-row"><div class="sm-row-text"><b>项目主页</b><small>github.com/zty8889-oss/infinite-canvas</small></div><button class="ghost" id="smRepo" type="button">打开</button></div>';
+  document.getElementById("smRepo").addEventListener("click",function(){window.open("https://github.com/zty8889-oss/infinite-canvas","_blank","noopener");});
+}
+document.getElementById("openSettings").addEventListener("click",openPreferences);
+document.getElementById("settingsClose").addEventListener("click",closePreferences);
+settingsModal.addEventListener("click",function(event){if(event.target===settingsModal)closePreferences();});
+document.querySelectorAll(".sm-nav button").forEach(function(button){
+  button.addEventListener("click",function(){renderSettingsPane(button.dataset.pane);});
+});
+
+/* ---- 帮助 ---- */
+var helpModal=document.getElementById("helpModal");
+function openHelp(){
+  document.getElementById("helpBody").innerHTML=
+    '<h3>画布与节点</h3><ul>'+
+    '<li>双击空白处或按 <kbd>/</kbd> 打开节点菜单；右键画布可上传素材、添加节点、撤销重做、复制粘贴。</li>'+
+    '<li>从节点右侧圆点拖出连线，松手落在目标节点任意位置即可连接；落在空白处会弹出节点菜单并自动连线。</li>'+
+    '<li>选中节点后下方出现编辑器，可填写提示词与参数；节点标题栏有重新生成与删除按钮。</li>'+
+    '<li>滚轮上下平移，<kbd>Ctrl</kbd> + 滚轮缩放，<kbd>Shift</kbd> + 滚轮横向平移。</li></ul>'+
+    '<h3>左下工具</h3><ul>'+
+    '<li><b>素材库</b>：查看画布内的图片与视频，点选可定位；把文件拖进画布即可上传。</li>'+
+    '<li><b>整理</b>：按连线顺序自动分层排布并居中，可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
+    '<li><b>地图</b>：显示小地图，点击地图可移动视口。</li>'+
+    '<li><b>吸附</b>：拖动节点时吸附到其他节点边缘或中心。</li>'+
+    '<li><b>连线</b>：显示或隐藏所有连接线。</li>'+
+    '<li><b>缩放</b>：查看当前百分比，可选择放大、缩小、100% 或适应画布。</li></ul>'+
+    '<h3>右下工具</h3><ul>'+
+    '<li><b>添加节点</b>：在画布中央打开节点类型菜单。</li>'+
+    '<li><b>移动工具</b>：切换为抓手后，拖拽任意位置平移画布。</li>'+
+    '<li><b>快捷键</b>：查看全部键盘操作。</li></ul>'+
+    '<h3>节点类型</h3><ul>'+
+    '<li>剧本、角色卡、分镜卡、场景卡、图像生成、图生视频、音频、文本、上传素材、合成。</li>'+
+    '<li>图像生成支持风格 / 构图 / 配色预设（官方与自定义），会写入生成提示词。</li>'+
+    '<li>音频支持配音旁白、音乐配乐、音效、音色生成四种模式与采样率 / 输出格式设置。</li></ul>'+
+    '<h3>生成与配置</h3><ul>'+
+    '<li>在左上角「设置 → API 接入」配置服务商与默认线路；没有 Key 时可先用「本地模拟」跑通流程。</li>'+
+    '<li>节点运行中会显示进度条与百分比，同一节点同时只会发起一次生成。</li>'+
+    '<li>「生成历史」记录最近 60 次运行，点击可回到对应节点。</li></ul>'+
+    '<h3>数据</h3><ul>'+
+    '<li>画布保存在本机（浏览器 localStorage 或桌面端应用数据），不上传服务器；Key 不随工作流导出。</li>'+
+    '<li>左上角可切换/新建画布；退出项目会保存当前画布并打开一个空白画布。</li></ul>';
+  helpModal.classList.add("on");
+}
+function closeHelp(){helpModal.classList.remove("on");}
+document.getElementById("helpClose").addEventListener("click",closeHelp);
+helpModal.addEventListener("click",function(event){if(event.target===helpModal)closeHelp();});
+
+/* ---- 左上角交互 ---- */
+document.getElementById("exitProject").addEventListener("click",function(){
+  if(!confirm("退出当前项目？当前画布会先保存，可在画布列表重新打开。"))return;
+  save();
+  var blank=canvasBook.items.filter(function(item){return item.name==="空白项目";})[0];
+  if(!blank)createCanvas("空白项目");else switchCanvas(blank.id);
+  toast("已退出项目，当前为空白画布");
+});
+document.getElementById("canvasSwitch").addEventListener("click",function(){openCanvasMenu(this);});
+document.getElementById("cmSearch").addEventListener("input",renderCanvasMenu);
+document.getElementById("cmNew").addEventListener("click",function(){closeCanvasMenu();createCanvas();});
+document.getElementById("cmDuplicate").addEventListener("click",function(){closeCanvasMenu();duplicateCanvas();});
+document.addEventListener("pointerdown",function(event){
+  var menu=document.getElementById("canvasMenu");
+  if(!menu||!menu.classList.contains("on"))return;
+  if(event.target.closest("#canvasMenu,#canvasSwitch"))return;
+  closeCanvasMenu();
+},true);
+ensureCanvasBook();
+updateCanvasLabel();
+
+/* =========================================================================
    12) 画布工具 API：供外部 Agent / 脚本驱动画布
    -------------------------------------------------------------------------
    参考 Toonflow 的画布工具体系：读写分离、字段裁剪、游标分页、原子操作，
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.0.12";
+var canvasApiVersion="1.0.13";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }
@@ -4021,7 +4353,13 @@ canvasTools.forEach(function(t){
 window.infiniteCanvas=canvasApi;
 canvasNotify("ready",{apiVersion:canvasApiVersion});
 
-load();clearStarterWorkflow();renderAll();
+load();
+var bootRecord=currentCanvasRecord();
+if(bootRecord&&Array.isArray(bootRecord.nodes)&&bootRecord.nodes.length){
+  state.nodes=bootRecord.nodes;state.links=bootRecord.links||[];state.view=bootRecord.view||state.view;state.history=bootRecord.history||[];
+  if(bootRecord.settings)state.settings=Object.assign(state.settings,bootRecord.settings);
+}
+clearStarterWorkflow();renderAll();updateCanvasLabel();
 historyEnabled=true;updateHistoryButtons();applyView();updateApiHealth();
 try{
   var launchParams=new URL(location.href).searchParams;

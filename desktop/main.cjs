@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog, shell } = require("electron");
-const { autoUpdater } = require("electron-updater");
+const { spawn } = require("node:child_process");
+const updater = require("./updater.cjs");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
@@ -36,35 +37,66 @@ const updateState = {
   currentVersion: app.getVersion(),
   availableVersion: "",
   percent: 0,
-  error: ""
+  speed: 0,
+  error: "",
+  readyFile: "",
+  manualUrl: "https://github.com/zty8889-oss/infinite-canvas/releases/latest"
 };
 
-autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = false;
-autoUpdater.on("checking-for-update", () => { updateState.status = "checking"; updateState.error = ""; });
-autoUpdater.on("update-available", info => {
-  updateState.status = "downloading";
-  updateState.availableVersion = info.version || "";
+const UPDATE_PAGE = "https://github.com/zty8889-oss/infinite-canvas/releases/latest";
+let updateTask = null;
+
+async function beginUpdateCheck() {
+  if (updateTask) return updateTask;
+  updateState.status = "checking";
+  updateState.error = "";
   updateState.percent = 0;
-});
-autoUpdater.on("update-not-available", () => {
-  updateState.status = "current";
   updateState.availableVersion = "";
-  updateState.percent = 0;
-});
-autoUpdater.on("download-progress", progress => {
-  updateState.status = "downloading";
-  updateState.percent = Math.max(0, Math.min(100, Math.round(progress.percent || 0)));
-});
-autoUpdater.on("update-downloaded", info => {
-  updateState.status = "downloaded";
-  updateState.availableVersion = info.version || updateState.availableVersion;
-  updateState.percent = 100;
-});
-autoUpdater.on("error", error => {
-  updateState.status = "error";
-  updateState.error = String(error && error.message || "更新检查失败").slice(0, 500);
-});
+  updateState.readyFile = "";
+  updateTask = (async () => {
+    try {
+      const latest = await updater.fetchLatest();
+      if (!updater.isNewer(latest.version, app.getVersion())) {
+        updateState.status = "current";
+        return;
+      }
+      updateState.availableVersion = latest.version;
+      updateState.status = "downloading";
+      const directory = path.join(app.getPath("userData"), "updates");
+      fs.mkdirSync(directory, { recursive: true });
+      const file = path.join(directory, latest.asset.name);
+      await updater.download(latest, file, (percent, received, speed) => {
+        updateState.percent = Math.max(0, Math.min(99, percent || 0));
+        updateState.speed = speed || 0;
+      });
+      updateState.percent = 100;
+      updateState.readyFile = file;
+      updateState.status = "downloaded";
+    } catch (error) {
+      updateState.status = "error";
+      updateState.percent = 0;
+      const raw = String(error && error.message || error || "更新检查失败");
+      if (/SLOW_NETWORK/.test(raw)) {
+        const speed = Math.round((updateState.speed || 0) / 1024);
+        updateState.error = ("当前网络到 GitHub 下载服务器过慢（约 " + speed + " KB/s），已停止下载。请手动下载安装包：" + UPDATE_PAGE).slice(0, 500);
+      } else {
+        updateState.error = (raw + "（可手动下载：" + UPDATE_PAGE + "）").slice(0, 500);
+      }
+    } finally {
+      updateTask = null;
+    }
+  })();
+  return updateTask;
+}
+
+function installDownloadedUpdate() {
+  if (!updateState.readyFile || !fs.existsSync(updateState.readyFile)) {
+    throw new Error("更新包不存在，请重新检查更新");
+  }
+  const child = spawn(updateState.readyFile, [], { detached: true, stdio: "ignore" });
+  child.unref();
+  setTimeout(() => app.quit(), 400);
+}
 
 app.setName(PRODUCT_NAME);
 app.setPath("userData", path.join(app.getPath("appData"), "InfiniteCanvasDesktop"));
@@ -438,10 +470,7 @@ async function handleRequest(request, response, port) {
       updateState.error = "";
       updateState.availableVersion = "";
       updateState.percent = 0;
-      autoUpdater.checkForUpdates().catch(error => {
-        updateState.status = "error";
-        updateState.error = String(error && error.message || "更新检查失败").slice(0, 500);
-      });
+      beginUpdateCheck();
       sendJson(response, 202, { ...updateState, enabled: true });
       return;
     }
@@ -451,7 +480,14 @@ async function handleRequest(request, response, port) {
         return;
       }
       sendJson(response, 202, { ...updateState, installing: true });
-      setTimeout(() => autoUpdater.quitAndInstall(false, true), 250);
+      setTimeout(() => {
+        try {
+          installDownloadedUpdate();
+        } catch (error) {
+          updateState.status = "error";
+          updateState.error = String(error && error.message || "无法启动安装程序").slice(0, 500);
+        }
+      }, 250);
       return;
     }
     sendJson(response, 404, { error: { message: "找不到更新服务" } });

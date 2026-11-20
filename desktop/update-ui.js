@@ -21,6 +21,7 @@
     ".update-actions button{min-height:34px;padding:0 13px;border:1px solid #3a3d45;border-radius:8px;background:#23252b;color:#c8cbd3;font-size:12px;cursor:pointer}",
     ".update-actions button.primary{border-color:#2c9cb8;background:#147d98;color:#fff;font-weight:650}",
     ".update-actions button:disabled{opacity:.45;cursor:default}",
+    ".update-actions .update-manual{margin-right:auto}",
     "#software-update-button{display:inline-flex;align-items:center;gap:6px}",
     "#software-update-button svg{width:15px;height:15px;flex:0 0 auto}",
     "#software-update-button.ready{border-color:#2299b5;color:#26b8db}",
@@ -43,7 +44,7 @@
   modal.setAttribute("role", "dialog");
   modal.setAttribute("aria-modal", "true");
   modal.setAttribute("aria-label", "软件更新");
-  modal.innerHTML = '<section class="update-box"><header class="update-head"><span class="update-mark"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 16v4h14v-4"/></svg></span><div><strong>软件更新</strong><small class="update-version">当前版本</small></div><button class="update-close" type="button" aria-label="关闭">×</button></header><div class="update-state">正在读取版本信息…</div><div class="update-progress"><i></i></div><footer class="update-actions"><button class="update-check" type="button">检查更新</button><button class="update-install primary" type="button" hidden>重启并安装</button></footer></section>';
+  modal.innerHTML = '<section class="update-box"><header class="update-head"><span class="update-mark"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M5 16v4h14v-4"/></svg></span><div><strong>软件更新</strong><small class="update-version">当前版本</small></div><button class="update-close" type="button" aria-label="关闭">×</button></header><div class="update-state">正在读取版本信息…</div><div class="update-progress"><i></i></div><footer class="update-actions"><button class="update-manual" type="button">打开发布页</button><button class="update-check" type="button">检查更新</button><button class="update-install primary" type="button" hidden>重启并安装</button></footer></section>';
   document.body.appendChild(modal);
 
   var stateEl = modal.querySelector(".update-state");
@@ -52,9 +53,12 @@
   var progressBar = progress.querySelector("i");
   var checkButton = modal.querySelector(".update-check");
   var installButton = modal.querySelector(".update-install");
+  var manualButton = modal.querySelector(".update-manual");
+  var latestState = {};
   var pollTimer = 0;
 
   function paint(state){
+    latestState = state || {};
     versionEl.textContent = "当前版本 " + (state.currentVersion || "未知");
     installButton.hidden = state.status !== "downloaded";
     checkButton.hidden = state.status === "downloaded";
@@ -64,7 +68,7 @@
     progressBar.style.width = (state.status === "downloaded" ? 100 : state.percent || 0) + "%";
     if (!state.enabled) stateEl.textContent = state.error || "更新功能仅在已安装的桌面版中可用。";
     else if (state.status === "checking") stateEl.textContent = "正在检查新版本…";
-    else if (state.status === "downloading") stateEl.textContent = "正在下载 " + (state.availableVersion ? "v" + state.availableVersion + " " : "") + (state.percent || 0) + "%";
+    else if (state.status === "downloading") stateEl.textContent = "正在下载 " + (state.availableVersion ? "v" + state.availableVersion + " " : "") + (state.percent || 0) + "%" + (state.speed ? " · " + Math.round(state.speed / 1024) + " KB/s" : "");
     else if (state.status === "downloaded") stateEl.textContent = "新版本 " + (state.availableVersion ? "v" + state.availableVersion + " " : "") + "已下载，重启后自动安装。";
     else if (state.status === "current") stateEl.textContent = "当前已是最新版本。";
     else if (state.status === "error") stateEl.textContent = "更新失败：" + (state.error || "请检查网络后重试。");
@@ -104,6 +108,10 @@
     installButton.disabled=true;
     installButton.textContent="正在重启…";
     request("install","POST").catch(function(error){installButton.disabled=false;installButton.textContent="重启并安装";paint({enabled:true,status:"error",error:error.message});});
+  });
+  manualButton.addEventListener("click",function(){
+    var url = latestState.manualUrl || "https://github.com/zty8889-oss/infinite-canvas/releases/latest";
+    window.open(url, "_blank", "noopener");
   });
   modal.querySelector(".update-close").addEventListener("click",function(){modal.classList.remove("on");});
   modal.addEventListener("click",function(event){if(event.target===modal)modal.classList.remove("on");});

@@ -799,7 +799,7 @@
   #zoomPopover button{display:block;width:132px;height:32px;border:0;border-radius:8px;background:transparent;
     color:#dcdee3;font-size:12.5px;text-align:left;padding:0 10px;cursor:pointer}
   #zoomPopover button:hover{background:#24262c}
-  #minimap{position:fixed;right:16px;bottom:70px;z-index:35;width:190px;height:126px;border-radius:12px;
+  #minimap{position:fixed;left:14px;bottom:64px;z-index:35;width:190px;height:126px;border-radius:12px;
     background:rgba(12,14,18,.86);border:1px solid #2c2e34;box-shadow:0 14px 40px rgba(0,0,0,.5);display:none;cursor:pointer}
   #minimap.on{display:block}
   #assetsPopover{position:fixed;z-index:60;display:none;width:300px;max-height:min(60vh,460px);overflow:auto;padding:10px;
@@ -1086,7 +1086,6 @@
 
 <div id="runbar"><span id="runbar-text">运行中…</span><span class="pbar"><i id="runbar-bar"></i></span></div>
 <div id="zoominfo"><button id="zin">＋</button><span id="ztext">100%</span><button id="zout">－</button></div>
-<div id="hint">拖入图片/视频=上传 · 单击节点=下方编辑 · ＋下方添加=向下生成并自动连线 · 双击画布/「/」= 建节点 · 滚轮=上下平移 · Ctrl+滚轮=缩放</div>
 <div id="toast"></div>
 <input id="filejson" type="file" accept="application/json,.json" hidden>
 
@@ -1094,7 +1093,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.5
+   AI漫剧节点工作台 v4.7
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1568,7 +1567,7 @@ function applyView(){
   ztext.textContent=Math.round(state.view.s*100)+"%";
   var barZoom=document.getElementById("barZoomLabel");
   if(barZoom)barZoom.textContent=Math.round(state.view.s*100)+"%";
-  if(typeof uiFlags!=="undefined"&&uiFlags&&uiFlags.minimap)drawMinimap();
+  if(typeof uiFlags!=="undefined"&&uiFlags&&uiFlags.minimap)scheduleMinimapDraw();
   if(selectedLinkId)positionSelectedWireDelete();
 }
 function s2w(cx,cy){return {x:(cx-state.view.x)/state.view.s,y:(cy-state.view.y)/state.view.s};}
@@ -3180,31 +3179,60 @@ function toggleWires(btn){
 function toggleMinimap(btn){
   uiFlags.minimap=!uiFlags.minimap;minimapEl.classList.toggle("on",uiFlags.minimap);
   btn.classList.toggle("on",uiFlags.minimap);
-  if(uiFlags.minimap)drawMinimap();
+  if(uiFlags.minimap)scheduleMinimapDraw();
   saveSoon();
+}
+var minimapFrame=0,minimapDrag=false;
+function scheduleMinimapDraw(){
+  if(!minimapEl||!minimapEl.classList.contains("on"))return;
+  if(minimapFrame)return;
+  minimapFrame=requestAnimationFrame(function(){minimapFrame=0;drawMinimap();});
+}
+function minimapMetrics(){
+  var nodes=state.nodes.filter(function(n){return n.type!=="group";});
+  var s=Math.max(.12,state.view.s);
+  var viewX=-state.view.x/s,viewY=-state.view.y/s,viewW=innerWidth/s,viewH=innerHeight/s;
+  var minX=viewX,minY=viewY,maxX=viewX+viewW,maxY=viewY+viewH;
+  for(var i=0;i<nodes.length;i++){
+    var n=nodes[i];
+    minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);
+    maxX=Math.max(maxX,n.x+(n.w||280));maxY=Math.max(maxY,n.y+(n.h||300));
+  }
+  var W=minimapEl.width,H=minimapEl.height,pad=14;
+  var scale=Math.min((W-pad*2)/Math.max(1,maxX-minX),(H-pad*2)/Math.max(1,maxY-minY));
+  return {nodes:nodes,viewX:viewX,viewY:viewY,viewW:viewW,viewH:viewH,minX:minX,minY:minY,scale:scale,pad:pad,W:W,H:H};
 }
 function drawMinimap(){
   if(!minimapEl||!minimapEl.classList.contains("on"))return;
   var ctx=minimapEl.getContext("2d");if(!ctx)return;
-  var W=minimapEl.width,H=minimapEl.height;
-  ctx.clearRect(0,0,W,H);
-  var nodes=state.nodes.filter(function(n){return n.type!=="group"&&!isHidden(n);});
-  var s=Math.max(.12,state.view.s);
-  var viewX=-state.view.x/s,viewY=-state.view.y/s,viewW=innerWidth/s,viewH=innerHeight/s;
-  var minX=viewX,minY=viewY,maxX=viewX+viewW,maxY=viewY+viewH;
-  nodes.forEach(function(n){minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+(n.w||280));maxY=Math.max(maxY,n.y+(n.h||300));});
-  var pad=14,bw=Math.max(1,maxX-minX),bh=Math.max(1,maxY-minY);
-  var scale=Math.min((W-pad*2)/bw,(H-pad*2)/bh);
-  function px(x){return pad+(x-minX)*scale;}
-  function py(y){return pad+(y-minY)*scale;}
-  nodes.forEach(function(n){
-    var color=(NODETYPES[n.type]||{}).color||"#64748b";
-    ctx.fillStyle=color;ctx.globalAlpha=.75;
-    ctx.fillRect(px(n.x),py(n.y),Math.max(2,(n.w||280)*scale),Math.max(2,(n.h||300)*scale));
-  });
-  ctx.globalAlpha=1;ctx.strokeStyle="#56dfff";ctx.lineWidth=1.5;
-  ctx.strokeRect(px(viewX),py(viewY),Math.max(4,viewW*scale),Math.max(4,viewH*scale));
+  var m=minimapMetrics();
+  ctx.clearRect(0,0,m.W,m.H);
+  ctx.fillStyle="rgba(10,12,16,.92)";ctx.fillRect(0,0,m.W,m.H);
+  for(var i=0;i<m.nodes.length;i++){
+    var n=m.nodes[i];
+    ctx.fillStyle=(NODETYPES[n.type]||{}).color||"#64748b";
+    ctx.fillRect(m.pad+(n.x-m.minX)*m.scale,m.pad+(n.y-m.minY)*m.scale,Math.max(3,(n.w||280)*m.scale),Math.max(3,(n.h||300)*m.scale));
+  }
+  ctx.strokeStyle="#56dfff";ctx.lineWidth=1.5;
+  ctx.strokeRect(m.pad+(m.viewX-m.minX)*m.scale,m.pad+(m.viewY-m.minY)*m.scale,Math.max(5,m.viewW*m.scale),Math.max(5,m.viewH*m.scale));
 }
+function minimapJump(event){
+  var m=minimapMetrics();
+  var rect=minimapEl.getBoundingClientRect();
+  var worldX=m.minX+((event.clientX-rect.left)/rect.width*m.W-m.pad)/m.scale;
+  var worldY=m.minY+((event.clientY-rect.top)/rect.height*m.H-m.pad)/m.scale;
+  state.view.x=innerWidth/2-worldX*state.view.s;
+  state.view.y=innerHeight/2-worldY*state.view.s;
+  applyView();
+}
+minimapEl.addEventListener("pointerdown",function(event){
+  minimapDrag=true;
+  try{minimapEl.setPointerCapture(event.pointerId);}catch(_){}
+  minimapJump(event);
+});
+minimapEl.addEventListener("pointermove",function(event){if(minimapDrag)minimapJump(event);});
+minimapEl.addEventListener("pointerup",function(){minimapDrag=false;});
+minimapEl.addEventListener("pointercancel",function(){minimapDrag=false;});
 function toggleAssets(btn){
   var pop=assetsPopover;
   if(pop.classList.contains("on")){pop.classList.remove("on");return;}
@@ -3264,23 +3292,6 @@ document.addEventListener("pointerdown",function(event){
   if(event.target.closest("#morePopover,#zoomPopover,#assetsPopover,#barLeft,#barCenter"))return;
   closeFloatingPanels();
 },true);
-minimapEl.addEventListener("click",function(event){
-  var rect=minimapEl.getBoundingClientRect();
-  var nodes=state.nodes.filter(function(n){return n.type!=="group";});
-  if(!nodes.length)return;
-  var W=minimapEl.width,H=minimapEl.height,pad=14;
-  var s=Math.max(.12,state.view.s);
-  var viewX=-state.view.x/s,viewY=-state.view.y/s,viewW=innerWidth/s,viewH=innerHeight/s;
-  var minX=viewX,minY=viewY,maxX=viewX+viewW,maxY=viewY+viewH;
-  nodes.forEach(function(n){minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);maxX=Math.max(maxX,n.x+(n.w||280));maxY=Math.max(maxY,n.y+(n.h||300));});
-  var scale=Math.min((W-pad*2)/Math.max(1,maxX-minX),(H-pad*2)/Math.max(1,maxY-minY));
-  var worldX=minX+((event.clientX-rect.left)/rect.width*W-pad)/scale;
-  var worldY=minY+((event.clientY-rect.top)/rect.height*H-pad)/scale;
-  state.view.x=innerWidth/2-worldX*state.view.s;
-  state.view.y=innerHeight/2-worldY*state.view.s;
-  applyView();saveSoon();
-});
-
 function handleBarAction(act,btn){
   if(act==="menu")showMenu(innerWidth/2-150,innerHeight/2-170,selectedId);
   else if(act==="fit"||act==="zoomfit"){fitView();closeFloatingPanels();}
@@ -3981,7 +3992,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.0.14";
+var APP_VERSION="1.1.5";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4217,7 +4228,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.0.14";
+var canvasApiVersion="1.1.5";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

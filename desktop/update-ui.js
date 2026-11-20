@@ -2,7 +2,7 @@
   "use strict";
   if (!/Electron\//.test(navigator.userAgent) || location.hostname !== "127.0.0.1") return;
 
-  var toolbar = document.getElementById("toolbar");
+  var toolbar = document.getElementById("barLeft") || document.getElementById("toolbar");
   if (!toolbar) return;
 
   var style = document.createElement("style");

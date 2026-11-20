@@ -2494,7 +2494,7 @@ document.getElementById("filejson").addEventListener("change",function(e){
   r.readAsText(f);e.target.value="";
 });
 function exportFlow(){
-  var data={version:3,exportedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,settings:{active:state.settings.active}};
+  var data={format:CANVAS_FORMAT,version:3,exportedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,settings:{active:state.settings.active}};
   var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="workflow-"+new Date().toISOString().slice(0,10)+".json";a.click();
   toast("已导出工作流（不含Key）");
@@ -2811,7 +2811,14 @@ modal.addEventListener("click",function(e){if(e.target===modal)closeSettings();}
    ========================================================================= */
 var t=null;
 function saveSoon(){clearTimeout(t);t=setTimeout(save,400);}
-function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(state));return true;}catch(e){toast("本机存储空间不足，请导出工作流备份并移除大素材");return false;}}
+var CANVAS_FORMAT={name:"infinite-canvas",version:3};
+function save(){
+  try{
+    // 自描述文件：旧版本读取时会忽略 format/savedAt 字段，仍能兼容打开
+    var payload={format:CANVAS_FORMAT,savedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,view:state.view,settings:state.settings};
+    localStorage.setItem(STORE_KEY,JSON.stringify(payload));return true;
+  }catch(e){toast("本机存储空间不足，请导出工作流备份并移除大素材");return false;}
+}
 function validateWorkflowData(d){
   if(!d||typeof d!=="object"||!Array.isArray(d.nodes)||!Array.isArray(d.links))throw new Error("缺少有效的 nodes 或 links 列表");
   if(d.nodes.length>1500||d.links.length>5000)throw new Error("工作流项目数量超出限制");
@@ -2828,7 +2835,10 @@ function validateWorkflowData(d){
   var links=d.links.filter(function(l){return l&&ids[l.from]&&ids[l.to]&&l.from!==l.to;}).map(function(l){return {id:String(l.id||id("l")),from:l.from,to:l.to};});
   var v=d.view||{},active=d.settings&&d.settings.active;return {nodes:nodes,links:links,view:{x:Number.isFinite(+v.x)?+v.x:0,y:Number.isFinite(+v.y)?+v.y:0,s:Math.max(.12,Math.min(4,Number.isFinite(+v.s)?+v.s:1))},active:active&&typeof active==="object"?active:null};
 }
-function load(){try{var raw=localStorage.getItem(STORE_KEY);if(!raw)return false;var d=JSON.parse(raw);var safe=validateWorkflowData(d);
+function load(){try{var raw=localStorage.getItem(STORE_KEY);if(!raw)return false;var d=JSON.parse(raw);
+  if(d.format&&d.format.name&&d.format.name!==CANVAS_FORMAT.name){toast("无法识别的工作流格式，已跳过加载");return false;}
+  if(d.format&&Number(d.format.version)>CANVAS_FORMAT.version)toast("该工作流由更新版本保存，部分内容可能无法显示");
+  var safe=validateWorkflowData(d);
   state.nodes=safe.nodes;state.links=safe.links;state.view=safe.view;if(d.settings)state.settings=Object.assign(state.settings,d.settings);normalizeProviderState();return true;}catch(e){return false;}}
 
 function seed(){
@@ -2865,6 +2875,165 @@ function clearStarterWorkflow(){
      !has("image","prompt","橘猫特写，雨中发光眼睛，神秘氛围"))return false;
   state.nodes=[];state.links=[];state.view={x:0,y:0,s:1};selectedId=null;selectedIds=[];save();return true;
 }
+
+/* =========================================================================
+   12) 画布工具 API：供外部 Agent / 脚本驱动画布
+   -------------------------------------------------------------------------
+   参考 Toonflow 的画布工具体系：读写分离、字段裁剪、游标分页、原子操作，
+   并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
+   外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
+   ========================================================================= */
+var canvasApiVersion="1.0.8";
+function canvasNodeSummary(n){
+  return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
+}
+function canvasPick(obj,fields){
+  if(!fields||!fields.length)return obj;
+  var out={};fields.forEach(function(k){if(obj[k]!==undefined)out[k]=obj[k];});return out;
+}
+function canvasPage(list,opts){
+  opts=opts||{};
+  var limit=Math.min(200,Math.max(1,parseInt(opts.limit,10)||50));
+  var start=Math.max(0,parseInt(opts.cursor,10)||0);
+  return {total:list.length,items:list.slice(start,start+limit),nextCursor:start+limit<list.length?start+limit:null};
+}
+function canvasNodeText(n){
+  var dt=NODETYPES[n.type]||{},parts=[n.title||"",dt.label||""],p=n.params||{};
+  Object.keys(p).forEach(function(k){if(typeof p[k]==="string")parts.push(p[k]);});
+  return parts.join("\n");
+}
+function canvasRequireNode(nid){
+  var n=nodeById(nid);if(!n)throw new Error("节点不存在："+nid);return n;
+}
+function canvasNotify(action,detail){
+  try{document.dispatchEvent(new CustomEvent("infinitecanvas:change",{detail:{action:action,detail:detail||null,at:Date.now()}}));}catch(_){}
+}
+function canvasTool(name,label,description,params,handler){
+  return {name:name,label:label,description:description,params:params||{},run:function(args){
+    try{return {ok:true,data:handler(args||{})};}
+    catch(err){return {ok:false,error:{message:String(err&&err.message||err)}};}
+  }};
+}
+var canvasTools=[
+  canvasTool("getCanvas","获取画布概览","返回节点/连线数量、视口和节点摘要；需要细节时再用 getNodes 或 getNode。",{},function(){
+    return {id:"main",format:CANVAS_FORMAT,nodeCount:state.nodes.length,linkCount:state.links.length,
+      view:{x:Math.round(state.view.x),y:Math.round(state.view.y),scale:Number(state.view.s.toFixed(3))},
+      nodes:state.nodes.slice(0,40).map(canvasNodeSummary),truncated:state.nodes.length>40};
+  }),
+  canvasTool("findNodes","搜索节点","按关键字（标题/参数文本/类型名）、节点类型或状态筛选，结果分页返回。",{query:"关键字",type:"节点类型",status:"状态",limit:"每页条数",cursor:"游标"},function(a){
+    var q=String(a.query||"").trim().toLowerCase();
+    var list=state.nodes.filter(function(n){
+      if(a.type&&n.type!==a.type)return false;
+      if(a.status&&(n.status||"idle")!==a.status)return false;
+      if(!q)return true;
+      return canvasNodeText(n).toLowerCase().indexOf(q)>=0;
+    }).map(canvasNodeSummary);
+    return canvasPage(list,a);
+  }),
+  canvasTool("getNode","读取节点","按 ID 返回完整节点（含 params / output），可用 fields 裁剪字段。",{id:"节点 ID",fields:"字段数组"},function(a){
+    return {node:canvasPick(canvasRequireNode(a.id),a.fields)};
+  }),
+  canvasTool("getNodes","批量读取节点","按 ID 列表批量读取；ids 为空时返回全部，支持 fields 裁剪与游标分页。",{ids:"节点 ID 数组",fields:"字段数组",limit:"每页条数",cursor:"游标"},function(a){
+    var source=Array.isArray(a.ids)&&a.ids.length?state.nodes.filter(function(n){return a.ids.indexOf(n.id)>=0;}):state.nodes;
+    var page=canvasPage(source,a);
+    return {total:page.total,nextCursor:page.nextCursor,items:page.items.map(function(n){return canvasPick(n,a.fields);})};
+  }),
+  canvasTool("getEdges","读取连线","按节点过滤连线；direction 取 incoming / outgoing / both。",{nodeId:"节点 ID",direction:"incoming|outgoing|both",limit:"每页条数",cursor:"游标"},function(a){
+    var dir=a.direction||"both";
+    var list=state.links.filter(function(l){
+      if(!a.nodeId)return true;
+      if(dir==="incoming")return l.to===a.nodeId;
+      if(dir==="outgoing")return l.from===a.nodeId;
+      return l.from===a.nodeId||l.to===a.nodeId;
+    }).map(function(l){return {id:l.id,from:l.from,to:l.to};});
+    return canvasPage(list,a);
+  }),
+  canvasTool("addNode","新建节点","在画布坐标新建指定类型节点，可写入标题与参数；传 parentId 时自动连线。",{type:"节点类型",x:"X 坐标",y:"Y 坐标",title:"标题",params:"参数对象",parentId:"父节点 ID"},function(a){
+    if(!NODETYPES[a.type])throw new Error("不支持的节点类型："+a.type);
+    var parent=a.parentId?canvasRequireNode(a.parentId):null;
+    var node=addNode(a.type,Number(a.x)||0,Number(a.y)||0,parent?parent.id:null);
+    if(!node)throw new Error("节点创建失败");
+    if(a.title)node.title=String(a.title);
+    if(a.params&&typeof a.params==="object")node.params=Object.assign({},node.params,a.params);
+    refresh(node);renderAll();save();canvasNotify("addNode",{id:node.id});
+    return canvasNodeSummary(node);
+  }),
+  canvasTool("updateNode","更新节点","修改标题或浅合并参数（写入提示词等）。",{id:"节点 ID",title:"标题",params:"参数对象"},function(a){
+    var n=canvasRequireNode(a.id);checkpoint();
+    if(a.title!==undefined)n.title=String(a.title);
+    if(a.params&&typeof a.params==="object")n.params=Object.assign({},n.params,a.params);
+    refresh(n);renderAll();save();canvasNotify("updateNode",{id:n.id});
+    return canvasNodeSummary(n);
+  }),
+  canvasTool("connectNodes","连接节点","建立 from → to 的数据连接，重复连接会报错。",{from:"起点节点 ID",to:"终点节点 ID"},function(a){
+    canvasRequireNode(a.from);canvasRequireNode(a.to);
+    if(a.from===a.to)throw new Error("不能连接节点自身");
+    if(state.links.some(function(l){return l.from===a.from&&l.to===a.to;}))throw new Error("这两个节点已经连接");
+    checkpoint();state.links.push({id:id("l"),from:a.from,to:a.to});drawWires();save();canvasNotify("connectNodes",{from:a.from,to:a.to});
+    return {from:a.from,to:a.to};
+  }),
+  canvasTool("deleteEdges","删除连线","按连线 ID 批量删除。",{ids:"连线 ID 数组"},function(a){
+    var ids=Array.isArray(a.ids)?a.ids:[];if(!ids.length)throw new Error("缺少 ids");
+    checkpoint();state.links=state.links.filter(function(l){return ids.indexOf(l.id)<0;});
+    drawWires();save();canvasNotify("deleteEdges",{ids:ids});return {deleted:ids.length};
+  }),
+  canvasTool("deleteNodes","删除节点","删除节点及其关联连线。",{ids:"节点 ID 数组"},function(a){
+    var ids=Array.isArray(a.ids)?a.ids:[];if(!ids.length)throw new Error("缺少 ids");
+    checkpoint();
+    state.nodes=state.nodes.filter(function(n){return ids.indexOf(n.id)<0;});
+    state.links=state.links.filter(function(l){return ids.indexOf(l.from)<0&&ids.indexOf(l.to)<0;});
+    selectedIds=selectedIds.filter(function(i){return ids.indexOf(i)<0;});
+    if(selectedId&&ids.indexOf(selectedId)>=0){selectedId=null;closeInspector();}
+    renderAll();save();canvasNotify("deleteNodes",{ids:ids});return {deleted:ids.length};
+  }),
+  canvasTool("moveNodes","移动节点","批量设置节点左上角坐标。",{items:"[{id,x,y}] 数组"},function(a){
+    var items=Array.isArray(a.items)?a.items:[];if(!items.length)throw new Error("缺少 items");
+    checkpoint();
+    items.forEach(function(it){var n=nodeById(it.id);if(!n)return;n.x=Number(it.x)||0;n.y=Number(it.y)||0;});
+    renderAll();save();canvasNotify("moveNodes",{count:items.length});return {moved:items.length};
+  }),
+  canvasTool("selectNodes","选中节点","设置当前选择集。",{ids:"节点 ID 数组"},function(a){
+    selectMultiple(Array.isArray(a.ids)?a.ids:[]);return {selected:selectedIds.slice()};
+  }),
+  canvasTool("arrangeCanvas","自动整理","按拓扑层级把节点排成左→右的分层网格。",{},function(){
+    var order=topoSort();if(!order.length)throw new Error("画布上没有可排列的节点");
+    checkpoint();var levels=levelize(order);
+    levels.forEach(function(list,li){list.forEach(function(n,ri){n.x=120+li*440;n.y=140+ri*380;});});
+    renderAll();save();canvasNotify("arrangeCanvas",{levels:levels.length});
+    return {levels:levels.length,nodes:order.length};
+  }),
+  canvasTool("fitCanvas","适应视图","把全部节点缩放到可视区域内。",{},function(){fitView();return {view:{x:Math.round(state.view.x),y:Math.round(state.view.y),scale:Number(state.view.s.toFixed(3))}};}),
+  canvasTool("runNode","运行节点","异步触发节点生成，不等待结果；状态可用 getNode 查询。",{id:"节点 ID"},function(a){
+    var n=canvasRequireNode(a.id);runNode(n.id,{quiet:true});canvasNotify("runNode",{id:n.id});return {started:true,id:n.id};
+  }),
+  canvasTool("undo","撤销","撤销上一步画布改动。",{},function(){restoreHistory(undoStack,redoStack);canvasNotify("undo");return {canUndo:undoStack.length>0,canRedo:redoStack.length>0};}),
+  canvasTool("redo","重做","重做被撤销的改动。",{},function(){restoreHistory(redoStack,undoStack);canvasNotify("redo");return {canUndo:undoStack.length>0,canRedo:redoStack.length>0};})
+];
+var canvasApi={
+  apiVersion:canvasApiVersion,
+  format:CANVAS_FORMAT,
+  listTools:function(){
+    return canvasTools.map(function(t){return {name:t.name,label:t.label,description:t.description,params:t.params};});
+  },
+  run:function(name,args){
+    var tool=canvasTools.filter(function(t){return t.name===name;})[0];
+    if(!tool)return {ok:false,error:{message:"未知操作："+name}};
+    return tool.run(args);
+  },
+  runNode:async function(nid){
+    try{await runNode(nid,{quiet:true});return {ok:true,data:canvasNodeSummary(nodeById(nid))};}
+    catch(err){return {ok:false,error:{message:String(err&&err.message||err)}};}
+  },
+  exportWorkflow:function(){
+    return {format:CANVAS_FORMAT,version:3,exportedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,settings:{active:state.settings.active}};
+  }
+};
+canvasTools.forEach(function(t){
+  if(canvasApi[t.name])return;
+  canvasApi[t.name]=function(args){return t.run(args);};
+});
+window.infiniteCanvas=canvasApi;
+canvasNotify("ready",{apiVersion:canvasApiVersion});
 
 load();clearStarterWorkflow();renderAll();
 historyEnabled=true;updateHistoryButtons();applyView();updateApiHealth();

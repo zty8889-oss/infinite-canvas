@@ -36,6 +36,24 @@ AI漫剧制作工具，纯前端单文件、零依赖、离线可用。
 - Ctrl+Z / Ctrl+Y 撤销与重做；清空画布也可撤销
 - 导入 JSON 会先校验结构、节点类型、数量及坐标；单文件上限 20 MB
 - 本地存储超额时显示提示；请导出 JSON 备份或移除大型图片/视频
+- 画布工具 API：`window.infiniteCanvas` 提供 17 个原子操作（读取/新增/连线/移动/整理/运行/撤销），支持字段裁剪与游标分页，便于外部 Agent 或脚本驱动画布
+
+### 画布工具 API（1.0.8 新增）
+`node.html` 在 `window.infiniteCanvas` 上暴露一组原子操作，外部 Agent、脚本或浏览器控制台都可以直接驱动画布：
+
+- 读：`getCanvas` / `findNodes` / `getNode` / `getNodes` / `getEdges`，支持 `fields` 字段裁剪与 `limit` / `cursor` 游标分页
+- 写：`addNode` / `updateNode` / `connectNodes` / `deleteEdges` / `deleteNodes` / `moveNodes` / `selectNodes` / `arrangeCanvas` / `fitCanvas` / `runNode`
+- 历史：`undo` / `redo`，所有写操作都会进入撤销栈
+- 发现：`infiniteCanvas.listTools()` 返回操作清单（名称、说明、参数），`infiniteCanvas.run(name, args)` 统一调用
+- 事件：每次改动在 `document` 上派发 `infinitecanvas:change`，`detail` 含 `action` 与参数
+
+```js
+infiniteCanvas.addNode({ type: "script", x: 0, y: 0, params: { topic: "雨夜追车" } });
+infiniteCanvas.arrangeCanvas();
+infiniteCanvas.fitCanvas();
+```
+
+工作流文件同时加入自描述头 `format: { name: "infinite-canvas", version: 3 }`；旧版本读取时忽略该字段，仍能正常打开。
 
 ### 厂商适配层
 `PROVIDERS` 注册表 + 统一协议：每个厂商实现 `run(ctx)` 或声明 `endpoint/parse`（同步）、`async/pollUrl/pollParse`（异步提交-轮询）。

@@ -417,7 +417,8 @@ function defaultStorageConfig() {
   return {
     imageRoot: path.join(media, "图片"),
     videoRoot: path.join(media, "视频"),
-    historyRoot: path.join(base, "生成历史")
+    historyRoot: path.join(base, "生成历史"),
+    canvasRoot: path.join(base, "画布")
   };
 }
 function readStorageConfig() {
@@ -429,7 +430,8 @@ function readStorageConfig() {
     return {
       imageRoot: pick(parsed.imageRoot, legacy || fallback.imageRoot),
       videoRoot: pick(parsed.videoRoot, legacy || fallback.videoRoot),
-      historyRoot: pick(parsed.historyRoot, fallback.historyRoot)
+      historyRoot: pick(parsed.historyRoot, fallback.historyRoot),
+      canvasRoot: pick(parsed.canvasRoot, fallback.canvasRoot)
     };
   } catch {
     return fallback;
@@ -495,13 +497,15 @@ async function handleStorageRequest(request, response, pathname) {
   }
   if (pathname === "/infinite-canvas/storage" && request.method === "POST") {
     const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
-    const next = { imageRoot: config.imageRoot, videoRoot: config.videoRoot, historyRoot: config.historyRoot };
+    const next = { imageRoot: config.imageRoot, videoRoot: config.videoRoot, historyRoot: config.historyRoot, canvasRoot: config.canvasRoot };
     if (body.imageRoot) next.imageRoot = path.resolve(String(body.imageRoot));
     if (body.videoRoot) next.videoRoot = path.resolve(String(body.videoRoot));
     if (body.historyRoot) next.historyRoot = path.resolve(String(body.historyRoot));
+    if (body.canvasRoot) next.canvasRoot = path.resolve(String(body.canvasRoot));
     fs.mkdirSync(next.imageRoot, { recursive: true });
     fs.mkdirSync(next.videoRoot, { recursive: true });
     fs.mkdirSync(next.historyRoot, { recursive: true });
+    fs.mkdirSync(next.canvasRoot, { recursive: true });
     writeStorageConfig(next);
     sendJson(response, 200, { ...next });
     return;
@@ -512,6 +516,7 @@ async function handleStorageRequest(request, response, pathname) {
       title: body.target === "history" ? "选择生成历史保存位置"
         : body.target === "video" ? "选择视频保存位置"
         : body.target === "image" ? "选择图片保存位置"
+        : body.target === "canvas" ? "选择画布保存位置"
         : "选择保存位置",
       properties: ["openDirectory", "createDirectory"]
     });
@@ -564,6 +569,24 @@ async function handleStorageRequest(request, response, pathname) {
       });
     } catch (_) {}
     sendJson(response, 200, { canvas: canvas, entries: entries });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage/canvas" && request.method === "GET") {
+    const file = path.join(config.canvasRoot, "canvas-book.json");
+    let book = null;
+    try {
+      book = JSON.parse(fs.readFileSync(file, "utf8"));
+    } catch (_) {}
+    sendJson(response, 200, { book, path: file });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage/canvas" && request.method === "POST") {
+    const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+    if (!body.book || !Array.isArray(body.book.items)) throw new Error("画布数据无效");
+    fs.mkdirSync(config.canvasRoot, { recursive: true });
+    const file = path.join(config.canvasRoot, "canvas-book.json");
+    fs.writeFileSync(file, JSON.stringify(body.book), "utf8");
+    sendJson(response, 200, { ok: true, path: file });
     return;
   }
   sendJson(response, 404, { error: { message: "找不到本地存储接口" } });

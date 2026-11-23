@@ -1201,7 +1201,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.15
+   AI漫剧节点工作台 v4.16
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1445,6 +1445,13 @@ function modelsForSlot(pid,slot){
 function modelChoicesForNode(pid,kind){
   var p=PROVIDERS[pid],slot=p&&p.modelSlots&&p.modelSlots.filter(function(s){return s.kind===kind;})[0];
   return slot?modelsForSlot(pid,slot):[];
+}
+function audioModelChoicesFor(pid){
+  var cfg=(state.settings.providers||{})[pid]||{};
+  var models=Array.isArray(cfg.discoveredModels)?cfg.discoveredModels:[];
+  return models.filter(function(model){
+    return model&&model.kinds&&model.kinds.indexOf("audio")>=0;
+  }).map(function(model){return {id:model.id,label:model.label||model.id,domain:model.domain};});
 }
 async function requestProviderModelList(pid,cfg,signal){
   var p=PROVIDERS[pid],base=String(cfg.baseUrl||(p.defaults&&p.defaults.baseUrl)||"").trim().replace(/\/+$/,""),path=p.testPath||"/v1/models";
@@ -2688,17 +2695,15 @@ function pasteClipboard(x,y){
 ctxMenuEl.addEventListener("click",function(e){
   var item=e.target.closest(".ci");if(!item)return;
   var act=item.dataset.act;
-  if(act==="add"){openCtxSub();return;}
-  if(act==="upload"){uploadFromCtx();return;}
+  if(act==="add"){openCtxSub();return;}  if(act==="upload"){uploadFromCtx();return;}
   if(act==="undo"){closeCtxMenu();restoreHistory(undoStack,redoStack);return;}
   if(act==="redo"){closeCtxMenu();restoreHistory(redoStack,undoStack);return;}
   if(act==="copy"){copySelection();closeCtxMenu();return;}
   if(act==="paste"){var point=ctxPoint;closeCtxMenu();pasteClipboard(point.x,point.y);return;}
 });
-ctxMenuEl.querySelector('[data-act="add"]').addEventListener("mouseenter",openCtxSub);
 document.addEventListener("pointermove",function(e){lastPointer.x=e.clientX;lastPointer.y=e.clientY;},{passive:true});
 document.addEventListener("pointerdown",function(e){
-  if(!ctxMenuEl.classList.contains("on"))return;
+  if(!ctxMenuEl.classList.contains("on")&&!ctxSubEl.classList.contains("on"))return;
   if(e.target.closest&&e.target.closest("#ctxmenu,#ctxsub"))return;
   closeCtxMenu();
 },true);
@@ -2909,38 +2914,6 @@ function openInspector(n){
       timbreRow.appendChild(timbreHint);audioRow.appendChild(timbreRow);
     }
     audioPanel.appendChild(audioRow);
-    var audioFoot=el("div","ie-audio-foot");
-    var audioPid=n.provider||state.settings.active.audio||"";
-    var audioCfg=state.settings.providers[audioPid]||{};
-    var audioModels=(Array.isArray(audioCfg.discoveredModels)?audioCfg.discoveredModels:[]).filter(function(model){
-      return model.kinds&&model.kinds.indexOf("audio")>=0;
-    }).map(function(model){return model.id;});
-    if(!audioModels.length&&audioCfg.model)audioModels.push(audioCfg.model);
-    if(n.model&&audioModels.indexOf(n.model)<0)audioModels.unshift(n.model);
-    if(audioModels.length){
-      var audioModelSel=el("select","ie-audio-model");
-      var audioDefault=el("option");audioDefault.value="";audioDefault.textContent="默认模型";audioModelSel.appendChild(audioDefault);
-      audioModels.forEach(function(name){var option=el("option");option.value=name;option.textContent=name;if(n.model===name)option.selected=true;audioModelSel.appendChild(option);});
-      if(!n.model)audioDefault.selected=true;
-      audioModelSel.addEventListener("change",function(){n.model=audioModelSel.value;saveSoon();});
-      audioFoot.appendChild(audioModelSel);
-    }else{
-      var audioModelInput=el("input","ie-audio-model");
-      audioModelInput.value=n.model||"";audioModelInput.placeholder="默认模型";
-      audioModelInput.title="请先在 API 接入中心为音频配置服务商与模型";
-      audioModelInput.addEventListener("input",function(){n.model=audioModelInput.value;saveSoon();});
-      audioFoot.appendChild(audioModelInput);
-    }
-    var audioConfigBtn=el("button","ie-audio-out");audioConfigBtn.type="button";audioConfigBtn.textContent="厂商设置";
-    audioConfigBtn.title="打开 API 接入中心配置音频服务商";
-    audioConfigBtn.addEventListener("click",function(){openSettings(audioPid||state.settings.active.audio||"");});
-    audioFoot.appendChild(audioConfigBtn);
-    var audioOutBtn=el("button","ie-audio-out");audioOutBtn.type="button";
-    function audioOutLabel(){var lang=n.params.mode==="voice"?({zh:"中文",en:"英文",ja:"日文"}[n.params.language]||"中文"):"";return (lang?lang+" · ":"")+n.params.sampleRate+" · "+n.params.format;}
-    audioOutBtn.textContent=audioOutLabel();
-    audioOutBtn.addEventListener("click",function(){openAudioOutput(audioOutBtn,n,audioOutLabel);});
-    audioFoot.appendChild(audioOutBtn);
-    audioPanel.appendChild(audioFoot);
     insBody.appendChild(audioPanel);
   }
 
@@ -3045,11 +3018,28 @@ function openInspector(n){
     if(!n.model)defaultOption.selected=true;
     model.addEventListener("change",function(){n.model=model.value;saveSoon();if(n.type==="video")openInspector(n);});
   }else{
-    model=el("input","ie-model");model.value=n.model||"";model.placeholder="默认模型";model.title="模型名称，留空使用厂商默认";
-    model.addEventListener("input",function(){n.model=model.value;saveSoon();});
+    var audioChoices=kind==="audio"?audioModelChoicesFor(n.provider):[];
+    if(audioChoices.length){
+      model=el("select","ie-select ie-model");model.title="选择已获取的音频模型；留空使用默认";
+      var audioDefaultOption=el("option");audioDefaultOption.value="";audioDefaultOption.textContent="默认模型";model.appendChild(audioDefaultOption);
+      if(n.model&&!audioChoices.some(function(choice){return choice.id===n.model;}))audioChoices.unshift({id:n.model,label:n.model});
+      audioChoices.forEach(function(choice){var option=el("option");option.value=choice.id;option.textContent=choice.label===choice.id?choice.id:choice.label+" · "+choice.id;if(choice.id===n.model)option.selected=true;model.appendChild(option);});
+      if(!n.model)audioDefaultOption.selected=true;
+      model.addEventListener("change",function(){n.model=model.value;saveSoon();});
+    }else{
+      model=el("input","ie-model");model.value=n.model||"";model.placeholder="默认模型";model.title="模型名称，留空使用厂商默认";
+      model.addEventListener("input",function(){n.model=model.value;saveSoon();});
+    }
   }
   controls.appendChild(model);
   var typeChip=el("span","ie-chip");typeChip.textContent="▣ "+(dt.label||n.type);typeChip.title="当前生成类型";controls.appendChild(typeChip);
+  if(n.type==="audio"){
+    var audioSummary=el("button","ie-chip audio-summary");audioSummary.type="button";audioSummary.title="音频采样率与输出格式";
+    function audioLabelText(){var lang=n.params.mode==="voice"?({zh:"中文",en:"英文",ja:"日文"}[n.params.language]||"中文"):"";return (lang?lang+" · ":"")+n.params.sampleRate+" · "+n.params.format;}
+    audioSummary.textContent=audioLabelText();
+    audioSummary.addEventListener("click",function(){openAudioOutput(audioSummary,n,audioLabelText);});
+    controls.appendChild(audioSummary);
+  }
 
   if(n.params.ratio!==undefined){
     if(n.type==="image"){
@@ -4397,12 +4387,42 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.3";
+var APP_VERSION="1.2.4";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
+var canvasDiskTimer=0;
 function persistCanvasBook(){
   try{localStorage.setItem(CANVAS_LIST_KEY,JSON.stringify(canvasBook));}
   catch(_){toast("本机存储空间不足，画布列表未能保存");}
+  if(storageConfig.available){
+    clearTimeout(canvasDiskTimer);
+    canvasDiskTimer=setTimeout(function(){
+      try{
+        fetch("/infinite-canvas/storage/canvas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({book:canvasBook})}).catch(function(){});
+      }catch(_){}
+    },800);
+  }
+}
+async function syncCanvasBookFromDisk(){
+  if(!storageConfig.available)return;
+  try{
+    var response=await fetch("/infinite-canvas/storage/canvas");
+    if(!response.ok)return;
+    var data=await response.json();
+    var disk=data.book;
+    if(!disk||!Array.isArray(disk.items)||!disk.items.length){persistCanvasBook();return;}
+    var diskAt=disk.items.reduce(function(max,item){return Math.max(max,item.updatedAt||0);},0);
+    var localAt=canvasBook.items.reduce(function(max,item){return Math.max(max,item.updatedAt||0);},0);
+    if(diskAt>localAt){
+      canvasBook={current:disk.current||disk.items[0].id,items:disk.items};
+      applyCanvasRecord(currentCanvasRecord());
+      updateCanvasLabel();
+      persistCanvasBook();
+      toast("已从本地画布目录载入画布");
+    }else{
+      persistCanvasBook();
+    }
+  }catch(_){}
 }
 function loadCanvasBook(){
   try{
@@ -4519,7 +4539,7 @@ var settingsModal=document.getElementById("settingsModal");
 var smPane=document.getElementById("smPane");
 var settingsPane="update";
 /* ---- 本地磁盘存储（桌面版） ---- */
-var storageConfig={imageRoot:"",videoRoot:"",historyRoot:"",available:false};
+var storageConfig={imageRoot:"",videoRoot:"",historyRoot:"",canvasRoot:"",available:false};
 function isDesktopEnv(){
   return window.location.hostname==="127.0.0.1"&&window.location.pathname.indexOf("/infinite-canvas/")===0;
 }
@@ -4531,14 +4551,14 @@ async function loadStorageConfig(){
     var response=await fetch("/infinite-canvas/storage");
     if(!response.ok)return;
     var data=await response.json();
-    storageConfig={imageRoot:data.imageRoot||"",videoRoot:data.videoRoot||"",historyRoot:data.historyRoot||"",available:true};
+    storageConfig={imageRoot:data.imageRoot||"",videoRoot:data.videoRoot||"",historyRoot:data.historyRoot||"",canvasRoot:data.canvasRoot||"",available:true};
   }catch(_){}
 }
 async function updateStorageConfig(patch){
   var response=await fetch("/infinite-canvas/storage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});
   if(!response.ok)throw new Error("保存路径失败");
   var data=await response.json();
-  storageConfig={imageRoot:data.imageRoot,videoRoot:data.videoRoot,historyRoot:data.historyRoot,available:true};
+  storageConfig={imageRoot:data.imageRoot,videoRoot:data.videoRoot,historyRoot:data.historyRoot,canvasRoot:data.canvasRoot||"",available:true};
 }
 async function pickStorageFolder(target){
   var response=await fetch("/infinite-canvas/storage/pick",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({target:target})});
@@ -4836,6 +4856,7 @@ function renderSettingsPane(pane){
       '<div class="sm-row"><div class="sm-row-text"><b>图片保存位置</b><small>'+esc(ready?storageConfig.imageRoot:unavailable)+'</small></div><button class="ghost" id="smPickImage" type="button"'+(ready?'':' disabled')+'>选择文件夹</button></div>'+
       '<div class="sm-row"><div class="sm-row-text"><b>视频保存位置</b><small>'+esc(ready?storageConfig.videoRoot:unavailable)+'</small></div><button class="ghost" id="smPickVideo" type="button"'+(ready?'':' disabled')+'>选择文件夹</button></div>'+
       '<div class="sm-row"><div class="sm-row-text"><b>生成历史位置</b><small>'+esc(ready?storageConfig.historyRoot:unavailable)+'</small></div><button class="ghost" id="smPickHistory" type="button"'+(ready?'':' disabled')+'>选择文件夹</button></div>'+
+      '<div class="sm-row"><div class="sm-row-text"><b>画布保存位置</b><small>'+esc(ready?storageConfig.canvasRoot:unavailable)+'</small></div><button class="ghost" id="smPickCanvas" type="button"'+(ready?'':' disabled')+'>选择文件夹</button></div>'+
       '<div class="sm-row"><div class="sm-row-text"><b>恢复默认路径</b><small>默认位于用户数据目录下的「作品素材/图片」「作品素材/视频」「生成历史」</small></div><button class="ghost" id="smResetStorage" type="button"'+(ready?'':' disabled')+'>恢复默认</button></div>';
     if(ready){
       function wireStoragePick(id,target,key,label){
@@ -4852,11 +4873,12 @@ function renderSettingsPane(pane){
       wireStoragePick("smPickImage","image","imageRoot","图片保存位置");
       wireStoragePick("smPickVideo","video","videoRoot","视频保存位置");
       wireStoragePick("smPickHistory","history","historyRoot","历史保存位置");
+      wireStoragePick("smPickCanvas","canvas","canvasRoot","画布保存位置");
       document.getElementById("smResetStorage").addEventListener("click",async function(){
         try{
           var response=await fetch("/infinite-canvas/storage");
           var data=await response.json();
-          await updateStorageConfig({imageRoot:data.defaults.imageRoot,videoRoot:data.defaults.videoRoot,historyRoot:data.defaults.historyRoot});
+          await updateStorageConfig({imageRoot:data.defaults.imageRoot,videoRoot:data.defaults.videoRoot,historyRoot:data.defaults.historyRoot,canvasRoot:data.defaults.canvasRoot});
           renderSettingsPane("storage");toast("已恢复默认保存路径");
         }catch(error){toast(error.message);}
       });
@@ -4944,7 +4966,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.3";
+var canvasApiVersion="1.2.4";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }
@@ -5102,7 +5124,7 @@ if(bootRecord&&Array.isArray(bootRecord.nodes)&&bootRecord.nodes.length){
   state.nodes=bootRecord.nodes;state.links=bootRecord.links||[];state.view=bootRecord.view||state.view;state.history=bootRecord.history||[];
   if(bootRecord.settings)state.settings=Object.assign(state.settings,bootRecord.settings);
 }
-clearStarterWorkflow();renderAll();updateCanvasLabel();loadStorageConfig();
+clearStarterWorkflow();renderAll();updateCanvasLabel();loadStorageConfig().then(function(){syncCanvasBookFromDisk();});
 historyEnabled=true;updateHistoryButtons();applyView();updateApiHealth();
 try{
   var launchParams=new URL(location.href).searchParams;

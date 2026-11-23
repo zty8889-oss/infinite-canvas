@@ -54,6 +54,47 @@
   .asset-picker-item{border:1px solid #2c2e34;border-radius:10px;background:#101216;overflow:hidden;padding:0;cursor:pointer;text-align:left}
   .asset-picker-item img,.asset-picker-item video{width:100%;height:86px;object-fit:cover;display:block}
   .asset-picker-item span{display:block;padding:6px 8px;font-size:11.5px;color:#c3c7cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---- v4.14 全局素材库 ---- */
+  .al{position:fixed;inset:0;z-index:135;display:flex;align-items:center;justify-content:center;padding:22px;
+    background:rgba(4,6,10,.74);backdrop-filter:blur(6px)}
+  .al[hidden]{display:none}
+  .al-box{width:min(1120px,95vw);height:min(760px,90vh);display:flex;flex-direction:column;overflow:hidden;
+    background:#141519;border:1px solid #2f3137;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,.65)}
+  .al-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #23252b;
+    font-size:15px;font-weight:650;color:#eef0f4}
+  .al-close{width:30px;height:30px;border:1px solid #34363c;border-radius:8px;background:#22242a;color:#aeb2bc;font-size:17px;cursor:pointer}
+  .al-body{flex:1;display:flex;min-height:0}
+  .al-side{width:210px;padding:14px 10px;border-right:1px solid #23252b;display:flex;flex-direction:column;gap:4px}
+  .al-side button{display:flex;align-items:center;gap:8px;width:100%;height:34px;padding:0 10px;border:0;border-radius:8px;
+    background:transparent;color:#c3c7cf;font-size:12.5px;cursor:pointer;text-align:left}
+  .al-side button:hover{background:#21232a;color:#fff}
+  .al-side button.on{background:rgba(79,216,245,.12);color:#8fe9ff}
+  .al-side .al-count{margin-left:auto;color:#777b84;font-size:11.5px}
+  .al-side-title{padding:12px 10px 6px;font-size:11.5px;color:#777b84;display:flex;justify-content:space-between}
+  .al-new-folder{margin-top:6px;border:1px dashed #34363c!important;color:#9aa0aa!important}
+  .al-main{flex:1;display:flex;flex-direction:column;min-width:0;padding:14px 18px 18px}
+  .al-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .al-crumb{flex:1;font-size:12.5px;color:#8b8e97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .al-toolbar input{width:230px;height:32px;padding:0 10px;border:1px solid #2f3137;border-radius:8px;background:#1b1c21;color:#e6e7ea;outline:none;font-size:12px}
+  .al-toolbar button{height:32px;padding:0 12px;border:1px solid #2c9cb8;border-radius:8px;background:#147d98;color:#fff;font-size:12px;cursor:pointer}
+  .al-tabs{display:flex;gap:8px;margin-bottom:12px}
+  .al-tabs button{height:30px;padding:0 12px;border:1px solid #2f3137;border-radius:8px;background:#1b1c21;color:#aeb2bc;font-size:12px;cursor:pointer}
+  .al-tabs button.on{background:#2a2c33;border-color:#4a4d55;color:#fff}
+  .al-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start}
+  .al-item{position:relative;border:1px solid #2c2e34;border-radius:12px;background:#101216;overflow:hidden;cursor:pointer}
+  .al-item img,.al-item video{width:100%;height:118px;object-fit:cover;display:block}
+  .al-item audio{width:100%;height:40px;margin:34px 0;display:block}
+  .al-item .al-name{padding:8px 10px;font-size:12px;color:#c9ccd3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .al-item .al-badge{position:absolute;right:8px;top:8px;padding:1px 7px;border-radius:999px;background:rgba(10,12,16,.8);color:#9fe6ff;font-size:10.5px}
+  .al-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#6d707a;font-size:12.5px}
+  .al-empty .al-empty-icon{font-size:34px;opacity:.5}
+  .al-menu{position:fixed;z-index:140;display:none;min-width:150px;padding:6px;border-radius:10px;background:#17181c;
+    border:1px solid #34363c;box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  .al-menu.on{display:block}
+  .al-menu button{display:block;width:100%;height:30px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:#d5d8de;font-size:12px;text-align:left;cursor:pointer}
+  .al-menu button:hover{background:#24262c;color:#fff}
+  .al-menu .danger{color:#ff8d97}
   #edges path.temp{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}
   #nodes{position:absolute;left:0;top:0}
 
@@ -996,6 +1037,31 @@
 <canvas id="minimap" width="380" height="252" aria-label="画布地图"></canvas>
 <div id="historyModal"><div class="hm-box"><div class="hm-head">生成历史<button type="button" id="historyClose" aria-label="关闭">×</button></div><div class="hm-list" id="historyList"></div></div></div>
 <div id="audioOutput"></div>
+
+<div id="assetLibrary" class="al" hidden>
+  <div class="al-box" role="dialog" aria-modal="true" aria-label="全局素材库">
+    <div class="al-head"><span>全局素材库</span><button class="al-close" type="button" id="alClose" aria-label="关闭">×</button></div>
+    <div class="al-body">
+      <aside class="al-side">
+        <button type="button" class="on" data-scope="all">▦ 全部素材<span class="al-count" id="alAllCount">0</span></button>
+        <div class="al-side-title"><span>文件夹</span><span id="alFolderCount">0</span></div>
+        <div id="alFolders"></div>
+        <button type="button" class="al-new-folder" id="alNewFolder">＋ 新建文件夹</button>
+      </aside>
+      <main class="al-main">
+        <div class="al-toolbar">
+          <div class="al-crumb" id="alCrumb">素材库 / 全部素材</div>
+          <input id="alSearch" type="text" placeholder="搜索全部素材" autocomplete="off" />
+          <button id="alUpload" type="button">⬆ 本地上传</button>
+        </div>
+        <div class="al-tabs" id="alTabs"></div>
+        <div class="al-grid" id="alGrid"></div>
+        <div class="al-empty" id="alEmpty"><span class="al-empty-icon">▤</span><span>暂无素材</span></div>
+      </main>
+    </div>
+  </div>
+</div>
+<div id="alMenu" class="al-menu"></div>
 <div id="cutBadge">剪刀模式：按住左键划过连线即可切断，松开结束</div>
 <div id="linkBadge">连线模式：从节点任意位置拖到目标节点；多选时会一起连接（J / Esc 退出）</div>
 
@@ -1123,7 +1189,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.13
+   AI漫剧节点工作台 v4.14
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -2463,6 +2529,7 @@ var NODE_MENU=[
   {type:"text",label:"文本",icon:"📝"},
   {type:"upload",media:"image",label:"图片",icon:"🖼"},
   {type:"upload",media:"video",label:"视频",icon:"🎬"},
+  {type:"upload",media:"audio",label:"音频",icon:"🎵"},
   {type:"image",label:"图像生成",icon:"✨"},
   {type:"video",label:"图生视频",icon:"🎞"},
   {type:"audio",label:"音频生成",icon:"🎧"},
@@ -2829,12 +2896,31 @@ function openInspector(n){
     }
     audioPanel.appendChild(audioRow);
     var audioFoot=el("div","ie-audio-foot");
-    var audioModelSel=el("select","ie-audio-model");
-    ["Seed Audio 1.0","Minimax-speech-2.8-hd","Minimax-speech-2.8-turbo","Eleven V3","Mureka V9.5","ElevenMusic V3","Mureka V8"].forEach(function(name){
-      var option=el("option");option.value=name;option.textContent=name;if((n.model||"Seed Audio 1.0")===name)option.selected=true;audioModelSel.appendChild(option);
-    });
-    audioModelSel.addEventListener("change",function(){n.model=audioModelSel.value;saveSoon();});
-    audioFoot.appendChild(audioModelSel);
+    var audioPid=n.provider||state.settings.active.audio||"";
+    var audioCfg=state.settings.providers[audioPid]||{};
+    var audioModels=(Array.isArray(audioCfg.discoveredModels)?audioCfg.discoveredModels:[]).filter(function(model){
+      return model.kinds&&model.kinds.indexOf("audio")>=0;
+    }).map(function(model){return model.id;});
+    if(!audioModels.length&&audioCfg.model)audioModels.push(audioCfg.model);
+    if(n.model&&audioModels.indexOf(n.model)<0)audioModels.unshift(n.model);
+    if(audioModels.length){
+      var audioModelSel=el("select","ie-audio-model");
+      var audioDefault=el("option");audioDefault.value="";audioDefault.textContent="默认模型";audioModelSel.appendChild(audioDefault);
+      audioModels.forEach(function(name){var option=el("option");option.value=name;option.textContent=name;if(n.model===name)option.selected=true;audioModelSel.appendChild(option);});
+      if(!n.model)audioDefault.selected=true;
+      audioModelSel.addEventListener("change",function(){n.model=audioModelSel.value;saveSoon();});
+      audioFoot.appendChild(audioModelSel);
+    }else{
+      var audioModelInput=el("input","ie-audio-model");
+      audioModelInput.value=n.model||"";audioModelInput.placeholder="默认模型";
+      audioModelInput.title="请先在 API 接入中心为音频配置服务商与模型";
+      audioModelInput.addEventListener("input",function(){n.model=audioModelInput.value;saveSoon();});
+      audioFoot.appendChild(audioModelInput);
+    }
+    var audioConfigBtn=el("button","ie-audio-out");audioConfigBtn.type="button";audioConfigBtn.textContent="厂商设置";
+    audioConfigBtn.title="打开 API 接入中心配置音频服务商";
+    audioConfigBtn.addEventListener("click",function(){openSettings(audioPid||state.settings.active.audio||"");});
+    audioFoot.appendChild(audioConfigBtn);
     var audioOutBtn=el("button","ie-audio-out");audioOutBtn.type="button";
     function audioOutLabel(){var lang=n.params.mode==="voice"?({zh:"中文",en:"英文",ja:"日文"}[n.params.language]||"中文"):"";return (lang?lang+" · ":"")+n.params.sampleRate+" · "+n.params.format;}
     audioOutBtn.textContent=audioOutLabel();
@@ -3606,7 +3692,7 @@ function handleBarAction(act,btn){
   else if(act==="undo")restoreHistory(undoStack,redoStack);
   else if(act==="redo")restoreHistory(redoStack,undoStack);
   else if(act==="more")togglePopover(morePopover,btn);
-  else if(act==="assets")toggleAssets(btn);
+  else if(act==="assets")openAssetLibrary();
   else if(act==="arrange"){var arranged=window.infiniteCanvas.arrangeCanvas();if(arranged&&arranged.ok){fitView();toast("已整理画布，可按 Ctrl+Z 撤销");}else toast("画布上没有可整理的节点");}
   else if(act==="minimap")toggleMinimap(btn);
   else if(act==="snap")toggleSnap(btn);
@@ -4297,7 +4383,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.1";
+var APP_VERSION="1.2.2";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4466,6 +4552,179 @@ async function persistHistoryToDisk(entry){
   if(!storageConfig.available)return;
   try{await fetch("/infinite-canvas/storage/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"history",canvas:activeCanvasName(),entry:entry})});}catch(_){}
 }
+/* ---- 全局素材库（v4.14） ---- */
+var ASSET_FOLDER_KEY="ic-asset-folders-v1";
+var assetStore={folders:[],map:{}};
+var assetState={scope:"all",tab:"all",query:""};
+var assetLibraryEl=document.getElementById("assetLibrary");
+var alGrid=document.getElementById("alGrid");
+var alTabs=document.getElementById("alTabs");
+var alMenu=document.getElementById("alMenu");
+function loadAssetStore(){
+  try{
+    var raw=localStorage.getItem(ASSET_FOLDER_KEY);if(!raw)return;
+    var data=JSON.parse(raw);
+    if(Array.isArray(data.folders))assetStore.folders=data.folders.filter(function(f){return f&&f.id&&f.name;});
+    if(data.map&&typeof data.map==="object")assetStore.map=data.map;
+  }catch(_){}
+}
+function saveAssetStore(){try{localStorage.setItem(ASSET_FOLDER_KEY,JSON.stringify(assetStore));}catch(_){toast("本机存储空间不足，素材库分组未保存");}}
+loadAssetStore();
+
+function assetItems(){
+  syncCurrentCanvas();
+  var items=[];
+  canvasBook.items.forEach(function(canvas){
+    (canvas.nodes||[]).forEach(function(n){
+      var output=n.output||{},kind=output.kind;
+      if(!kind)return;
+      if(["image","video","audio"].indexOf(kind)<0)return;
+      var url=output.url||(output.b64?("data:image/png;base64,"+output.b64):"");
+      if(!url)return;
+      items.push({
+        nodeId:n.id,canvasId:canvas.id,canvasName:canvas.name,
+        title:n.title||(NODETYPES[n.type]||{}).label||"素材",
+        kind:kind,url:url,folderId:assetStore.map[n.id]||""
+      });
+    });
+  });
+  return items;
+}
+function assetFiltered(items){
+  var q=assetState.query.trim().toLowerCase();
+  return items.filter(function(item){
+    if(assetState.scope!=="all"&&item.folderId!==assetState.scope)return false;
+    if(assetState.tab!=="all"&&item.kind!==assetState.tab)return false;
+    if(q&&String(item.title).toLowerCase().indexOf(q)<0)return false;
+    return true;
+  });
+}
+function renderAssetLibrary(){
+  var items=assetItems(),visible=assetFiltered(items);
+  document.getElementById("alAllCount").textContent=items.length;
+  document.getElementById("alFolderCount").textContent=assetStore.folders.length;
+  var folderBox=document.getElementById("alFolders");folderBox.innerHTML="";
+  assetStore.folders.forEach(function(folder){
+    var button=el("button");button.type="button";button.dataset.scope=folder.id;
+    if(assetState.scope===folder.id)button.classList.add("on");
+    button.innerHTML='<span>▤</span><span>'+esc(folder.name)+'</span><span class="al-count">'+items.filter(function(item){return item.folderId===folder.id;}).length+'</span>';
+    button.addEventListener("click",function(){assetState.scope=folder.id;renderAssetLibrary();});
+    folderBox.appendChild(button);
+  });
+  document.querySelectorAll(".al-side button[data-scope]").forEach(function(button){
+    if(button.dataset.scope==="all")button.classList.toggle("on",assetState.scope==="all");
+  });
+  var current=assetStore.folders.filter(function(folder){return folder.id===assetState.scope;})[0];
+  var scopeName=assetState.scope==="all"?"全部素材":(current?current.name:"素材");
+  document.getElementById("alCrumb").textContent="素材库 / "+scopeName;
+  document.getElementById("alSearch").placeholder="搜索"+scopeName;
+  var tabs=[["all","全部"],["image","图片"],["video","视频"],["audio","音频"],["other","其他"]];
+  alTabs.innerHTML="";
+  tabs.forEach(function(pair){
+    var count=pair[0]==="all"?items.length:items.filter(function(item){return item.kind===pair[0];}).length;
+    var button=el("button",assetState.tab===pair[0]?"on":"");button.type="button";
+    button.textContent=pair[1]+" "+count;
+    button.addEventListener("click",function(){assetState.tab=pair[0];renderAssetLibrary();});
+    alTabs.appendChild(button);
+  });
+  alGrid.innerHTML="";
+  document.getElementById("alEmpty").style.display=visible.length?"none":"flex";
+  visible.forEach(function(item){
+    var card=el("div","al-item");
+    var url=esc(safeMediaUrl(item.url));
+    var media=item.kind==="image"?'<img src="'+url+'" alt="">'
+      :item.kind==="video"?'<video src="'+url+'" muted></video>'
+      :'<audio src="'+url+'" controls></audio>';
+    var label=item.kind==="image"?"图片":item.kind==="video"?"视频":"音频";
+    card.innerHTML=media+'<span class="al-badge">'+label+'</span><div class="al-name">'+esc(item.title)+'</div>';
+    card.addEventListener("click",function(event){openAssetItemMenu(event.clientX,event.clientY,item);});
+    card.addEventListener("contextmenu",function(event){event.preventDefault();openAssetItemMenu(event.clientX,event.clientY,item);});
+    alGrid.appendChild(card);
+  });
+}
+function canvasRecordById(id){return canvasBook.items.filter(function(item){return item.id===id;})[0]||null;}
+function updateNodeInCanvas(canvasId,nodeId,mutate){
+  var record=canvasRecordById(canvasId);if(!record)return;
+  (record.nodes||[]).forEach(function(n){if(n.id===nodeId)mutate(n);});
+  if(canvasId===canvasBook.current)applyCanvasRecord(record);
+  persistCanvasBook();save();
+}
+function removeNodeFromCanvas(canvasId,nodeId){
+  var record=canvasRecordById(canvasId);if(!record)return;
+  record.nodes=(record.nodes||[]).filter(function(n){return n.id!==nodeId;});
+  record.links=(record.links||[]).filter(function(link){return link.from!==nodeId&&link.to!==nodeId;});
+  if(canvasId===canvasBook.current)applyCanvasRecord(record);
+  persistCanvasBook();save();
+}
+function openAssetItemMenu(x,y,item){
+  alMenu.innerHTML="";
+  function add(label,handler,danger){
+    var button=el("button",danger?"danger":"");button.type="button";button.textContent=label;
+    button.addEventListener("click",function(){alMenu.classList.remove("on");handler();});
+    alMenu.appendChild(button);
+  }
+  assetStore.folders.forEach(function(folder){
+    if(folder.id===item.folderId)return;
+    add("→ 移动到「"+folder.name+"」",function(){
+      assetStore.map[item.nodeId]=folder.id;saveAssetStore();renderAssetLibrary();toast("已移动到「"+folder.name+"」");
+    });
+  });
+  if(item.folderId)add("移出文件夹",function(){delete assetStore.map[item.nodeId];saveAssetStore();renderAssetLibrary();});
+  add("重命名",function(){
+    var name=prompt("重命名素材",item.title);if(!name)return;
+    updateNodeInCanvas(item.canvasId,item.nodeId,function(n){n.title=name;});
+    renderAssetLibrary();
+  });
+  add("删除",function(){
+    if(!confirm("删除素材「"+item.title+"」？"))return;
+    removeNodeFromCanvas(item.canvasId,item.nodeId);
+    delete assetStore.map[item.nodeId];saveAssetStore();renderAssetLibrary();toast("素材已删除");
+  },true);
+  alMenu.classList.add("on");
+  alMenu.style.left=Math.max(8,Math.min(x,innerWidth-190))+"px";
+  alMenu.style.top=Math.max(8,Math.min(y,innerHeight-200))+"px";
+}
+function openAssetLibrary(){
+  assetState={scope:"all",tab:"all",query:""};
+  document.getElementById("alSearch").value="";
+  assetLibraryEl.hidden=false;
+  renderAssetLibrary();
+}
+function closeAssetLibrary(){assetLibraryEl.hidden=true;alMenu.classList.remove("on");}
+document.getElementById("alClose").addEventListener("click",closeAssetLibrary);
+assetLibraryEl.addEventListener("click",function(event){if(event.target===assetLibraryEl)closeAssetLibrary();});
+document.getElementById("alSearch").addEventListener("input",function(){assetState.query=this.value;renderAssetLibrary();});
+document.addEventListener("pointerdown",function(event){
+  if(!alMenu.classList.contains("on"))return;
+  if(event.target.closest("#alMenu"))return;
+  alMenu.classList.remove("on");
+},true);
+document.getElementById("alNewFolder").addEventListener("click",function(){
+  var name=prompt("新建文件夹名称","新建文件夹");if(!name)return;
+  assetStore.folders.push({id:"f"+Date.now().toString(36),name:String(name).trim()||"新建文件夹"});
+  saveAssetStore();renderAssetLibrary();
+});
+document.getElementById("alUpload").addEventListener("click",function(){
+  var input=document.createElement("input");input.type="file";input.multiple=true;input.accept="image/*,video/*,audio/*";
+  input.onchange=async function(){
+    var files=Array.prototype.slice.call(input.files||[]);
+    for(var i=0;i<files.length;i++){
+      var file=files[i],info=mediaInfo(file);
+      if(!info){toast(file.name+"：不支持的格式");continue;}
+      try{
+        var url=await uploadMediaFile(file,info);
+        var node=addNode("upload",120+i*40,120+i*40,null,info.kind);
+        if(!node)continue;
+        node.title=file.name.length>22?file.name.slice(0,22)+"…":file.name;
+        node.output={kind:info.kind,url:url,note:"本地上传 · "+file.name,name:file.name};
+        node.status="done";node.log="本地文件已上传";
+        applyMediaAspect(node);refresh(node);save();
+      }catch(error){toast(file.name+"："+(error.message||"上传失败"));}
+    }
+    renderAssetLibrary();
+  };
+  input.click();
+});
 function openPreferences(){
   settingsModal.classList.add("on");
   renderSettingsPane(settingsPane);
@@ -4622,7 +4881,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.1";
+var canvasApiVersion="1.2.2";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

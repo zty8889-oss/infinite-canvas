@@ -539,12 +539,20 @@
   .nd.collapsed .nd-shell{display:none}
   .nd.collapsed .hd{padding-bottom:0}
   .port{width:28px;height:28px;margin:0;top:calc(31px + (100% - 31px)/2);margin-top:-14px;
-    border:1px solid #555860;background:#191a1e;color:#9699a1;font-size:16px;font-weight:400;
-    display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 5px 14px rgba(0,0,0,.35)}
+    border:1px solid #6f737d;background:#121317;color:#ffffff;font-size:16px;font-weight:500;
+    display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 5px 14px rgba(0,0,0,.45);
+    opacity:0;pointer-events:none;transition:opacity .12s ease,background .12s ease}
+  .nd:hover .port,.nd.selected .port,.nd.near .port,.nd.linking .port{opacity:1;pointer-events:auto}
   .port:after{content:"+"}
-  .port.in{left:-14px}.port.out{right:-14px;background:#191a1e}
-  .port:hover{border-color:#d8d9dd;background:#f1f2f4;color:#151619}
+  .port.in{left:-14px}.port.out{right:-14px}
+  .port:hover{background:#f4f5f7;border-color:#fff;color:#151619}
   .nd.collapsed .port{top:15px}
+  .multi-frame{position:absolute;pointer-events:none;z-index:2;border:1px dashed rgba(150,200,230,.55);
+    border-radius:18px;background:rgba(90,170,220,.045)}
+  .multi-port{position:absolute;z-index:6;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+    border:1px solid #6f737d;background:#121317;color:#fff;font-size:17px;line-height:28px;text-align:center;
+    cursor:crosshair;box-shadow:0 6px 16px rgba(0,0,0,.5);user-select:none}
+  .multi-port:hover{background:#f4f5f7;color:#151619;border-color:#fff}
 
   #inspector{width:520px;max-height:min(650px,calc(100vh - 100px));background:#111216;border:1px solid #34363c;
     border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.48);color:#e9eaed;overflow:hidden}
@@ -1008,6 +1016,8 @@
       </marker>
     </defs><g id="alignment-guides"></g></svg>
     <div id="nodes"></div>
+    <div id="multiFrame" class="multi-frame" hidden></div>
+    <div id="multiPort" class="multi-port" hidden>+</div>
     <div id="inspector">
       <div class="ih"><input id="ins-title" value="节点" autocomplete="off" spellcheck="false"><span class="pill" id="ins-type"></span>
         <button class="close" id="ins-close" type="button">×</button></div>
@@ -1201,7 +1211,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.16
+   AI漫剧节点工作台 v4.17
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1915,6 +1925,64 @@ edgesEl.addEventListener("dblclick",function(e){
 function wire(p1,p2){var dx=Math.max(50,Math.abs(p2.x-p1.x)*0.5);
   return "M"+p1.x+","+p1.y+" C"+(p1.x+dx)+","+p1.y+" "+(p2.x-dx)+","+p2.y+" "+p2.x+","+p2.y;}
 
+/* ---- v4.17 多选整体框 + 集体连接 / 悬停扩展热区 ---- */
+var multiFrameEl=document.getElementById("multiFrame");
+var multiPortEl=document.getElementById("multiPort");
+function renderMultiFrame(){
+  if(!multiFrameEl||!multiPortEl)return;
+  var nodes=selectedIds.map(nodeById).filter(function(n){return n&&n.type!=="group";});
+  if(nodes.length<2){multiFrameEl.hidden=true;multiPortEl.hidden=true;return;}
+  var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  nodes.forEach(function(n){
+    minX=Math.min(minX,n.x);minY=Math.min(minY,n.y);
+    maxX=Math.max(maxX,n.x+(n.w||240));
+    maxY=Math.max(maxY,n.y+(n.collapsed?31:(n.h||200)));
+  });
+  multiFrameEl.hidden=false;
+  multiFrameEl.style.left=(minX-16)+"px";multiFrameEl.style.top=(minY-16)+"px";
+  multiFrameEl.style.width=(maxX-minX+32)+"px";multiFrameEl.style.height=(maxY-minY+32)+"px";
+  multiPortEl.hidden=false;
+  multiPortEl.style.left=(maxX+22)+"px";
+  multiPortEl.style.top=((minY+maxY)/2)+"px";
+}
+multiPortEl.addEventListener("pointerdown",function(e){
+  if(e.button!==0)return;
+  var sources=selectedIds.filter(function(nodeId){var n=nodeById(nodeId);return n&&n.type!=="group";});
+  if(!sources.length)return;
+  e.preventDefault();e.stopPropagation();
+  drag={type:"link",from:sources[0],sources:sources,sx:e.clientX,sy:e.clientY};
+  safeCapture(multiPortEl,e);
+  var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("class","temp");edgesEl.appendChild(path);
+});
+var nearRaf=0,nearPointer={x:-9999,y:-9999};
+vp.addEventListener("pointermove",function(e){
+  nearPointer.x=e.clientX;nearPointer.y=e.clientY;
+  if(nearRaf)return;
+  nearRaf=requestAnimationFrame(function(){
+    nearRaf=0;
+    var pad=46;
+    nodesEl.querySelectorAll(".nd").forEach(function(element){
+      var rect=element.getBoundingClientRect();
+      var near=nearPointer.x>rect.left-pad&&nearPointer.x<rect.right+pad&&nearPointer.y>rect.top-pad&&nearPointer.y<rect.bottom+pad;
+      element.classList.toggle("near",near);
+    });
+  });
+},{passive:true});
+vp.addEventListener("pointerleave",function(){
+  nodesEl.querySelectorAll(".nd.near").forEach(function(element){element.classList.remove("near");});
+});
+
+var pendingWire=null;
+function drawPendingWire(){
+  var path=edgesEl.querySelector("path.temp");
+  if(!pendingWire){if(path)path.remove();return;}
+  var anchor=nodeById(pendingWire.from);
+  if(!anchor){pendingWire=null;if(path)path.remove();return;}
+  if(!path){path=document.createElementNS("http://www.w3.org/2000/svg","path");path.setAttribute("class","temp");edgesEl.appendChild(path);}
+  path.setAttribute("d",wire(portPos(anchor,"out"),{x:pendingWire.x,y:pendingWire.y}));
+}
+
 var cutMode=false,cutting=false,cutHits=null,cutLast=null;
 var linkDragMode=false;
 function setLinkDragMode(on){
@@ -2305,6 +2373,7 @@ function finishConnect(targetId){
 }
 function syncSelectionClasses(){
   [].forEach.call(nodesEl.children,function(e){e.classList.toggle("selected",e.dataset.id===selectedId);e.classList.toggle("multi-selected",selectedIds.indexOf(e.dataset.id)>=0);});
+  renderMultiFrame();
 }
 function select(i){
   if(selectedLinkId){selectedLinkId=null;drawWires();}
@@ -2467,6 +2536,9 @@ function endDrag(e){
       drawWires();save();
     }else{
       drawWires();save();
+      var endWorld=s2w(e.clientX,e.clientY);
+      pendingWire={from:drag.from,sources:(drag.sources||[drag.from]).slice(),x:endWorld.x,y:endWorld.y};
+      drawPendingWire();
       if(nodeById(drag.from))openCtxMenu(e.clientX,e.clientY,null,{linkFrom:drag.from});
     }
   } else if(drag.type==="move"||drag.type==="multi-move"||drag.type==="gmove"||drag.type==="gresize"||drag.type==="resize"){save();
@@ -2608,6 +2680,7 @@ function openCtxMenu(x,y,anchorId,opts){
 function closeCtxMenu(){
   ctxMenuEl.classList.remove("on");ctxSubEl.classList.remove("on");
   pendingLinkSource=null;
+  pendingWire=null;drawPendingWire();
 }
 function openCtxSub(){
   var box=ctxMenuEl.getBoundingClientRect();
@@ -2630,12 +2703,23 @@ function openCtxSub(){
   ctxSubEl.style.left=left+"px";ctxSubEl.style.top=Math.max(8,top)+"px";
 }
 function createNodeFromCtx(type,media){
-  var from=pendingLinkSource,anchor=ctxAnchorId,point={x:ctxPoint.x,y:ctxPoint.y};
-  pendingLinkSource=null;closeCtxMenu();
+  var anchor=ctxAnchorId,point={x:ctxPoint.x,y:ctxPoint.y};
+  var sources=pendingWire?pendingWire.sources.slice():(pendingLinkSource?[pendingLinkSource]:[]);
+  var from=sources[0]||null;
+  closeCtxMenu();
   var node;
   if(anchor&&nodeById(anchor)&&!from&&type!=="upload"){node=addChildNode(anchor,type);}
   else{var w=s2w(point.x,point.y);node=addNode(type,w.x-140,w.y-150,null,media);}
-  if(node&&from&&nodeById(from)&&node.id!==from&&!state.links.some(function(l){return l.from===from&&l.to===node.id;})){
+  if(node&&sources.length){
+    var added=0;
+    sources.forEach(function(sourceId){
+      if(sourceId===node.id)return;
+      if(state.links.some(function(link){return link.from===sourceId&&link.to===node.id;}))return;
+      state.links.push({id:id("l"),from:sourceId,to:node.id});
+      added++;
+    });
+    if(added){drawWires();save();toast("已创建节点并自动连线");}
+  }else if(node&&from&&nodeById(from)&&node.id!==from&&!state.links.some(function(link){return link.from===from&&link.to===node.id;})){
     state.links.push({id:id("l"),from:from,to:node.id});drawWires();save();toast("已创建节点并自动连线");
   }
 }
@@ -4387,7 +4471,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.4";
+var APP_VERSION="1.2.5";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -4966,7 +5050,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.4";
+var canvasApiVersion="1.2.5";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

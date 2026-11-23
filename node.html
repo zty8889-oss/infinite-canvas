@@ -1123,7 +1123,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.12
+   AI漫剧节点工作台 v4.13
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -2460,14 +2460,14 @@ document.addEventListener("focusin",function(e){if(e.target.matches("input,texta
    ========================================================================= */
 var NODE_MENU=[
   {act:"back",label:"返回操作菜单",icon:"‹"},
-  {type:"text",label:"文本",icon:"▤"},
-  {type:"upload",media:"image",label:"图片",icon:"▧"},
-  {type:"upload",media:"video",label:"视频",icon:"▭"},
-  {type:"image",label:"图像生成",icon:"◧"},
+  {type:"text",label:"文本",icon:"📝"},
+  {type:"upload",media:"image",label:"图片",icon:"🖼"},
+  {type:"upload",media:"video",label:"视频",icon:"🎬"},
+  {type:"image",label:"图像生成",icon:"✨"},
   {type:"video",label:"图生视频",icon:"🎞"},
   {type:"audio",label:"音频生成",icon:"🎧"},
-  {type:"compose",label:"合成导出",icon:"🎬"},
-  {type:"upload",media:"any",label:"上传素材",icon:"⇧"}
+  {type:"compose",label:"合成导出",icon:"🔗"},
+  {type:"upload",media:"any",label:"上传素材",icon:"⬆"}
 ];
 function showMenu(x,y,anchorId){
   menuAnchorId=anchorId||null;
@@ -2525,10 +2525,13 @@ function closeCtxMenu(){
 }
 function openCtxSub(){
   ctxSubEl.innerHTML='<div class="sh">新建节点</div>';
-  Object.keys(NODETYPES).forEach(function(t){
-    var dt=NODETYPES[t],si=el("div","si");
-    si.innerHTML='<span class="ico">'+dt.icon+'</span><span>'+esc(dt.label)+'</span>';
-    si.addEventListener("click",function(){createNodeFromCtx(t);});
+  NODE_MENU.forEach(function(item){
+    var si=el("div","si");
+    si.innerHTML='<span class="ico">'+item.icon+'</span><span>'+esc(item.label)+'</span>';
+    si.addEventListener("click",function(){
+      if(item.act==="back"){ctxSubEl.classList.remove("on");return;}
+      createNodeFromCtx(item.type,item.media);
+    });
     ctxSubEl.appendChild(si);
   });
   ctxSubEl.classList.add("on");
@@ -2538,12 +2541,12 @@ function openCtxSub(){
   var top=Math.min(box.top,innerHeight-h-8);
   ctxSubEl.style.left=left+"px";ctxSubEl.style.top=Math.max(8,top)+"px";
 }
-function createNodeFromCtx(type){
+function createNodeFromCtx(type,media){
   var from=pendingLinkSource,anchor=ctxAnchorId,point={x:ctxPoint.x,y:ctxPoint.y};
   pendingLinkSource=null;closeCtxMenu();
   var node;
-  if(anchor&&nodeById(anchor)&&!from){node=addChildNode(anchor,type);}
-  else{var w=s2w(point.x,point.y);node=addNode(type,w.x-140,w.y-150);}
+  if(anchor&&nodeById(anchor)&&!from&&type!=="upload"){node=addChildNode(anchor,type);}
+  else{var w=s2w(point.x,point.y);node=addNode(type,w.x-140,w.y-150,null,media);}
   if(node&&from&&nodeById(from)&&node.id!==from&&!state.links.some(function(l){return l.from===from&&l.to===node.id;})){
     state.links.push({id:id("l"),from:from,to:node.id});drawWires();save();toast("已创建节点并自动连线");
   }
@@ -4294,7 +4297,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.1.10";
+var APP_VERSION="1.2.1";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4619,7 +4622,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.1.10";
+var canvasApiVersion="1.2.1";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

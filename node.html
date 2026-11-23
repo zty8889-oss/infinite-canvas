@@ -95,6 +95,17 @@
   .al-menu button{display:block;width:100%;height:30px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:#d5d8de;font-size:12px;text-align:left;cursor:pointer}
   .al-menu button:hover{background:#24262c;color:#fff}
   .al-menu .danger{color:#ff8d97}
+  .al-more{height:26px;padding:0 9px;border:1px solid #34363c;border-radius:7px;background:#1e2026;color:#b9bdc6;font-size:13px;cursor:pointer}
+  .al-more:hover{color:#fff;border-color:#4a4d55}
+  .al-prompt{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;background:rgba(4,6,10,.6)}
+  .al-prompt-box{width:min(360px,90vw);padding:18px;border-radius:14px;background:#17181c;border:1px solid #34363c;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .al-prompt-title{font-size:13.5px;color:#e6e7ea;margin-bottom:12px}
+  .al-prompt-input{width:100%;height:36px;padding:0 10px;border:1px solid #34363c;border-radius:9px;background:#101216;color:#eef0f4;font-size:13px;outline:none;box-sizing:border-box}
+  .al-prompt-input:focus{border-color:#2c9cb8}
+  .al-prompt-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .al-prompt-actions button{height:32px;padding:0 14px;border-radius:8px;font-size:12.5px;cursor:pointer}
+  .al-prompt-actions .ghost{border:1px solid #34363c;background:#1b1c21;color:#c3c7cf}
+  .al-prompt-actions .primary{border:1px solid #2c9cb8;background:#147d98;color:#fff}
   #edges path.temp{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}
   #nodes{position:absolute;left:0;top:0}
 
@@ -1051,6 +1062,7 @@
       <main class="al-main">
         <div class="al-toolbar">
           <div class="al-crumb" id="alCrumb">素材库 / 全部素材</div>
+          <button class="al-more" id="alFolderMore" type="button" hidden title="文件夹操作">⋯</button>
           <input id="alSearch" type="text" placeholder="搜索全部素材" autocomplete="off" />
           <button id="alUpload" type="button">⬆ 本地上传</button>
         </div>
@@ -1189,7 +1201,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.14
+   AI漫剧节点工作台 v4.15
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1809,7 +1821,7 @@ function openAudioOutput(anchor,n,onChange){
 }
 document.addEventListener("pointerdown",function(event){
   if(!audioOutputEl.classList.contains("on"))return;
-  if(event.target.closest("#audioOutput,.ie-audio-out"))return;
+  if(event.target.closest&&event.target.closest("#audioOutput,.ie-audio-out"))return;
   audioOutputEl.classList.remove("on");
 },true);
 
@@ -2591,18 +2603,20 @@ function closeCtxMenu(){
   pendingLinkSource=null;
 }
 function openCtxSub(){
+  var box=ctxMenuEl.getBoundingClientRect();
   ctxSubEl.innerHTML='<div class="sh">新建节点</div>';
   NODE_MENU.forEach(function(item){
     var si=el("div","si");
     si.innerHTML='<span class="ico">'+item.icon+'</span><span>'+esc(item.label)+'</span>';
     si.addEventListener("click",function(){
-      if(item.act==="back"){ctxSubEl.classList.remove("on");return;}
+      if(item.act==="back"){ctxSubEl.classList.remove("on");ctxMenuEl.classList.add("on");return;}
       createNodeFromCtx(item.type,item.media);
     });
     ctxSubEl.appendChild(si);
   });
   ctxSubEl.classList.add("on");
-  var box=ctxMenuEl.getBoundingClientRect(),w=ctxSubEl.offsetWidth||232,h=ctxSubEl.offsetHeight||320;
+  ctxMenuEl.classList.remove("on");
+  var w=ctxSubEl.offsetWidth||232,h=ctxSubEl.offsetHeight||320;
   var left=box.right+6;
   if(left+w>innerWidth-8)left=Math.max(8,box.left-w-6);
   var top=Math.min(box.top,innerHeight-h-8);
@@ -2685,7 +2699,7 @@ ctxMenuEl.querySelector('[data-act="add"]').addEventListener("mouseenter",openCt
 document.addEventListener("pointermove",function(e){lastPointer.x=e.clientX;lastPointer.y=e.clientY;},{passive:true});
 document.addEventListener("pointerdown",function(e){
   if(!ctxMenuEl.classList.contains("on"))return;
-  if(e.target.closest("#ctxmenu,#ctxsub"))return;
+  if(e.target.closest&&e.target.closest("#ctxmenu,#ctxsub"))return;
   closeCtxMenu();
 },true);
 
@@ -3679,7 +3693,7 @@ async function openHistory(){
 document.getElementById("historyClose").addEventListener("click",function(){historyModal.classList.remove("on");});
 historyModal.addEventListener("click",function(event){if(event.target===historyModal)historyModal.classList.remove("on");});
 document.addEventListener("pointerdown",function(event){
-  if(event.target.closest("#morePopover,#zoomPopover,#assetsPopover,#barLeft,#barCenter"))return;
+  if(event.target.closest&&event.target.closest("#morePopover,#zoomPopover,#assetsPopover,#barLeft,#barCenter"))return;
   closeFloatingPanels();
 },true);
 function handleBarAction(act,btn){
@@ -4383,7 +4397,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.2";
+var APP_VERSION="1.2.3";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4599,6 +4613,51 @@ function assetFiltered(items){
     return true;
   });
 }
+function askText(title,value,placeholder){
+  return new Promise(function(resolve){
+    var layer=el("div","al-prompt");
+    layer.innerHTML='<div class="al-prompt-box"><div class="al-prompt-title">'+esc(title)+'</div>'+
+      '<input class="al-prompt-input" type="text" value="'+esc(value||"")+'" placeholder="'+esc(placeholder||"")+'">'+
+      '<div class="al-prompt-actions"><button type="button" class="ghost" data-act="cancel">取消</button>'+
+      '<button type="button" class="primary" data-act="ok">确定</button></div></div>';
+    document.body.appendChild(layer);
+    var input=layer.querySelector("input");
+    function done(result){layer.remove();resolve(result);}
+    layer.querySelector('[data-act="cancel"]').addEventListener("click",function(){done(null);});
+    layer.querySelector('[data-act="ok"]').addEventListener("click",function(){done(input.value.trim()||null);});
+    input.addEventListener("keydown",function(event){
+      if(event.key==="Enter"){event.preventDefault();done(input.value.trim()||null);}
+      if(event.key==="Escape"){event.preventDefault();done(null);}
+    });
+    layer.addEventListener("click",function(event){if(event.target===layer)done(null);});
+    setTimeout(function(){input.focus();input.select();},30);
+  });
+}
+function openFolderMenu(x,y,folder){
+  alMenu.innerHTML="";
+  function add(label,handler,danger){
+    var button=el("button",danger?"danger":"");button.type="button";button.textContent=label;
+    button.addEventListener("click",function(){alMenu.classList.remove("on");handler();});
+    alMenu.appendChild(button);
+  }
+  add("重命名文件夹",async function(){
+    var name=await askText("重命名文件夹",folder.name);
+    if(!name||name===folder.name)return;
+    folder.name=name;saveAssetStore();renderAssetLibrary();toast("文件夹已重命名");
+  });
+  add("删除文件夹",function(){
+    if(!confirm("删除文件夹「"+folder.name+"」？其中的素材会回到「全部素材」，不会被删除。"))return;
+    assetStore.folders=assetStore.folders.filter(function(item){return item.id!==folder.id;});
+    Object.keys(assetStore.map).forEach(function(nodeId){
+      if(assetStore.map[nodeId]===folder.id)delete assetStore.map[nodeId];
+    });
+    if(assetState.scope===folder.id)assetState.scope="all";
+    saveAssetStore();renderAssetLibrary();toast("文件夹已删除");
+  },true);
+  alMenu.classList.add("on");
+  alMenu.style.left=Math.max(8,Math.min(x,innerWidth-210))+"px";
+  alMenu.style.top=Math.max(8,Math.min(y,innerHeight-160))+"px";
+}
 function renderAssetLibrary(){
   var items=assetItems(),visible=assetFiltered(items);
   document.getElementById("alAllCount").textContent=items.length;
@@ -4609,6 +4668,7 @@ function renderAssetLibrary(){
     if(assetState.scope===folder.id)button.classList.add("on");
     button.innerHTML='<span>▤</span><span>'+esc(folder.name)+'</span><span class="al-count">'+items.filter(function(item){return item.folderId===folder.id;}).length+'</span>';
     button.addEventListener("click",function(){assetState.scope=folder.id;renderAssetLibrary();});
+    button.addEventListener("contextmenu",function(event){event.preventDefault();openFolderMenu(event.clientX,event.clientY,folder);});
     folderBox.appendChild(button);
   });
   document.querySelectorAll(".al-side button[data-scope]").forEach(function(button){
@@ -4618,6 +4678,7 @@ function renderAssetLibrary(){
   var scopeName=assetState.scope==="all"?"全部素材":(current?current.name:"素材");
   document.getElementById("alCrumb").textContent="素材库 / "+scopeName;
   document.getElementById("alSearch").placeholder="搜索"+scopeName;
+  document.getElementById("alFolderMore").hidden=assetState.scope==="all";
   var tabs=[["all","全部"],["image","图片"],["video","视频"],["audio","音频"],["other","其他"]];
   alTabs.innerHTML="";
   tabs.forEach(function(pair){
@@ -4670,8 +4731,9 @@ function openAssetItemMenu(x,y,item){
     });
   });
   if(item.folderId)add("移出文件夹",function(){delete assetStore.map[item.nodeId];saveAssetStore();renderAssetLibrary();});
-  add("重命名",function(){
-    var name=prompt("重命名素材",item.title);if(!name)return;
+  add("重命名",async function(){
+    var name=await askText("重命名素材",item.title);
+    if(!name)return;
     updateNodeInCanvas(item.canvasId,item.nodeId,function(n){n.title=name;});
     renderAssetLibrary();
   });
@@ -4696,13 +4758,14 @@ assetLibraryEl.addEventListener("click",function(event){if(event.target===assetL
 document.getElementById("alSearch").addEventListener("input",function(){assetState.query=this.value;renderAssetLibrary();});
 document.addEventListener("pointerdown",function(event){
   if(!alMenu.classList.contains("on"))return;
-  if(event.target.closest("#alMenu"))return;
+  if(event.target.closest&&event.target.closest("#alMenu"))return;
   alMenu.classList.remove("on");
 },true);
-document.getElementById("alNewFolder").addEventListener("click",function(){
-  var name=prompt("新建文件夹名称","新建文件夹");if(!name)return;
-  assetStore.folders.push({id:"f"+Date.now().toString(36),name:String(name).trim()||"新建文件夹"});
-  saveAssetStore();renderAssetLibrary();
+document.getElementById("alNewFolder").addEventListener("click",async function(){
+  var name=await askText("新建文件夹","新建文件夹","输入文件夹名称");
+  if(!name)return;
+  assetStore.folders.push({id:"f"+Date.now().toString(36),name:name});
+  saveAssetStore();renderAssetLibrary();toast("已创建文件夹「"+name+"」");
 });
 document.getElementById("alUpload").addEventListener("click",function(){
   var input=document.createElement("input");input.type="file";input.multiple=true;input.accept="image/*,video/*,audio/*";
@@ -4868,7 +4931,7 @@ document.getElementById("cmDuplicate").addEventListener("click",function(){close
 document.addEventListener("pointerdown",function(event){
   var menu=document.getElementById("canvasMenu");
   if(!menu||!menu.classList.contains("on"))return;
-  if(event.target.closest("#canvasMenu,#canvasSwitch"))return;
+  if(event.target.closest&&event.target.closest("#canvasMenu,#canvasSwitch"))return;
   closeCanvasMenu();
 },true);
 ensureCanvasBook();
@@ -4881,7 +4944,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.2";
+var canvasApiVersion="1.2.3";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

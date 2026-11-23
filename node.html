@@ -1102,7 +1102,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.9
+   AI漫剧节点工作台 v4.10
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1958,7 +1958,7 @@ function nodeEl(n){
     var empty=el("div","preview-empty");
     var reference=n.type==="video"&&n.params&&n.params.sourceImage?n.params.sourceImage:n.type==="image"&&n.params&&n.params.sourceImage?n.params.sourceImage:"";
     if(reference){if(n.type==="image")empty.classList.add("has-reference");var source=el("img",n.type==="image"?"image-reference-preview":"video-source");source.src=reference;source.alt=n.type==="image"?"图生图参考图片":"视频首帧参考";empty.appendChild(source);
-      if(n.type==="image"){var referenceTag=el("span","image-reference-tag");referenceTag.textContent="参考图片";empty.appendChild(referenceTag);}}
+      if(n.type==="image"){var referenceTag=el("span","image-reference-tag");referenceTag.textContent="参考图片 · 尚未生成";referenceTag.title="这只是参考图，运行该节点生成结果后，下游才会使用生成结果";empty.appendChild(referenceTag);}}
     var glyph=el("span","media-glyph");glyph.textContent=promptGlyph(dt.kind);
     var label=el("span","media-label");label.textContent=dt.label||"节点";
     var copy=el("span","media-copy");copy.textContent=summary(n)||"在下方描述内容后开始生成";
@@ -2026,11 +2026,18 @@ function videoDurationBounds(n){
   if(/seedance[-_. ]?2[-_. ]?0/i.test(model))return {min:4,max:15};
   return {min:2,max:12};
 }
-function videoRequiresAdaptiveRatio(n){
-  var hasImage=!!(n.params&&n.params.sourceImage)||state.links.some(function(link){
-    if(link.to!==n.id)return false;var upstream=nodeById(link.from);return !!(upstream&&upstream.output&&upstream.output.kind==="image");
+function videoHasFirstFrame(n){
+  if(n.params&&n.params.sourceImage)return true;
+  return state.links.some(function(link){
+    if(link.to!==n.id)return false;
+    var upstream=nodeById(link.from);if(!upstream)return false;
+    if(upstream.output&&upstream.output.kind==="image")return true;
+    var reference=upstream.params&&upstream.params.sourceImage;
+    return !!(reference&&(upstream.type==="image"||upstream.type==="upload"));
   });
-  return hasImage&&(n.provider||state.settings.active.video||"")==="ark";
+}
+function videoRequiresAdaptiveRatio(n){
+  return videoHasFirstFrame(n)&&(n.provider||state.settings.active.video||"")==="ark";
 }
 function videoResolutionOptions(n){
   var model=videoModelForNode(n).toLowerCase().replace(/[_. ]/g,"-");
@@ -2891,7 +2898,12 @@ function buildPrompt(n){
 }
 function gatherInputs(n){
   var out=[];
-  state.links.filter(function(l){return l.to===n.id;}).forEach(function(l){var up=nodeById(l.from);if(up&&up.output)out.push(up.output);});
+  state.links.filter(function(l){return l.to===n.id;}).forEach(function(l){
+    var up=nodeById(l.from);if(!up)return;
+    if(up.output){out.push(up.output);return;}
+    var reference=up.params&&up.params.sourceImage;
+    if(reference&&(up.type==="image"||up.type==="upload"))out.push({kind:"image",url:reference,note:"上游参考图（该节点尚未生成）"});
+  });
   if(n.type==="video"&&n.params&&n.params.sourceImage)out.unshift({kind:"image",url:n.params.sourceImage,note:"本地首帧参考"});
   if(n.type==="image"&&n.params&&n.params.sourceImage)out.unshift({kind:"image",url:n.params.sourceImage,note:"本地图生图参考"});
   return out;
@@ -2931,6 +2943,11 @@ async function runNode(nid,opts){
   try{
     var inputs=await resolveWorkflowInputs(gatherInputs(n));
     var hasFrame=inputs.some(function(input){return input.kind==="image"&&(input.url||input.b64);});
+    if(n.type==="video"){
+      if(hasFrame){n.log="已附加首帧参考图，正在提交…";}
+      else{n.log="上游没有可用图片，本次按纯文本生成视频";if(!opts.quiet)toast("未检测到首帧参考图，将按文本生成");}
+      paintProgress(n);
+    }
     if(n.type==="video"&&hasFrame&&pid==="ark"&&String(n.params.ratio||"adaptive")!=="adaptive"){
       n.params.ratio="adaptive";saveSoon();
       n.log="检测到首帧参考，比例已自动改为 Auto（方舟要求输出跟随首帧）";
@@ -4088,7 +4105,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.1.7";
+var APP_VERSION="1.1.8";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4325,7 +4342,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.1.7";
+var canvasApiVersion="1.1.8";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

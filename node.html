@@ -31,6 +31,12 @@
   #edges path.wire{fill:none;stroke:#8ea7c2;stroke-width:2.5;vector-effect:non-scaling-stroke}
   #edges path.wire-hit{fill:none;stroke:transparent;stroke-width:18;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer}
   #edges path.wire-hit.selected{stroke:rgba(85,222,255,.16)}
+  #edges path.wire-hit.cut{stroke:rgba(255,86,96,.55);stroke-dasharray:7 5}
+  body.cut-mode,body.cut-mode *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Ctext y='20' font-size='19'%3E%E2%9C%82%3C/text%3E%3C/svg%3E") 5 5,crosshair!important}
+  #cutBadge{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:80;display:none;padding:7px 15px;
+    border-radius:999px;background:rgba(20,21,25,.92);border:1px solid #3a3d45;color:#cfd3da;font-size:12px;
+    box-shadow:0 10px 26px rgba(0,0,0,.45)}
+  body.cut-mode #cutBadge{display:block}
   #edges path.temp{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}
   #nodes{position:absolute;left:0;top:0}
 
@@ -972,6 +978,7 @@
 <canvas id="minimap" width="380" height="252" aria-label="画布地图"></canvas>
 <div id="historyModal"><div class="hm-box"><div class="hm-head">生成历史<button type="button" id="historyClose" aria-label="关闭">×</button></div><div class="hm-list" id="historyList"></div></div></div>
 <div id="audioOutput"></div>
+<div id="cutBadge">剪刀模式：按住左键划过连线即可切断，松开结束</div>
 
 <div id="topLeft">
   <button id="exitProject" class="tl-icon" type="button" title="退出项目" aria-label="退出项目">
@@ -1068,6 +1075,8 @@
         <div class="sk-row"><span>撤销</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>Z</kbd></span></div>
         <div class="sk-row"><span>重做</span><span class="sk-keys"><kbd>Ctrl</kbd><i class="sk-plus">+</i><kbd>Shift</kbd><i class="sk-plus">+</i><kbd>Z</kbd></span></div>
         <div class="sk-row"><span>删除选中节点</span><span class="sk-keys"><kbd>Del</kbd></span></div>
+        <div class="sk-row"><span>剪刀切断连线</span><span class="sk-keys"><kbd>Y</kbd><i class="sk-plus">+</i><kbd>左键划过</kbd></span></div>
+        <div class="sk-row"><span>删除单条连线</span><span class="sk-keys">双击连线</span></div>
         <div class="sk-row"><span>关闭 / 取消操作</span><span class="sk-keys"><kbd>Esc</kbd></span></div>
       </section>
     </div>
@@ -1093,7 +1102,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.7
+   AI漫剧节点工作台 v4.8
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1762,13 +1771,69 @@ function positionSelectedWireDelete(){
     }else{selectedLinkId=null;button.classList.remove("on");}
   }else if(button)button.classList.remove("on");
 }
+function removeLinkById(linkId){
+  if(!linkId)return false;
+  if(!state.links.some(function(item){return item.id===linkId;}))return false;
+  checkpoint();
+  state.links=state.links.filter(function(item){return item.id!==linkId;});
+  if(selectedLinkId===linkId)selectedLinkId=null;
+  drawWires();save();toast("已删除连接线");
+  return true;
+}
 edgesEl.addEventListener("pointerdown",function(e){if(e.target.closest&&e.target.closest(".wire-hit"))e.stopPropagation();});
 edgesEl.addEventListener("click",function(e){
   var hit=e.target.closest&&e.target.closest(".wire-hit");if(!hit)return;
   selectedLinkId=hit.dataset.linkId;drawWires();
 });
+edgesEl.addEventListener("dblclick",function(e){
+  var hit=e.target.closest&&e.target.closest(".wire-hit");if(!hit)return;
+  e.preventDefault();e.stopPropagation();
+  removeLinkById(hit.dataset.linkId);
+});
 function wire(p1,p2){var dx=Math.max(50,Math.abs(p2.x-p1.x)*0.5);
   return "M"+p1.x+","+p1.y+" C"+(p1.x+dx)+","+p1.y+" "+(p2.x-dx)+","+p2.y+" "+p2.x+","+p2.y;}
+
+var cutMode=false,cutting=false,cutHits=null,cutLast=null;
+function setCutMode(on){
+  cutMode=!!on;
+  document.body.classList.toggle("cut-mode",cutMode);
+  if(!cutMode){cutting=false;cutHits=null;cutLast=null;}
+}
+function cutMark(x,y){
+  if(!cutHits)return;
+  var element=document.elementFromPoint(x,y);
+  var hit=element&&element.closest?element.closest(".wire-hit"):null;
+  if(!hit)return;
+  var linkId=hit.dataset.linkId;
+  if(!linkId||cutHits[linkId])return;
+  cutHits[linkId]=1;hit.classList.add("cut");
+}
+window.addEventListener("pointerdown",function(e){
+  if(!cutMode||e.button!==0)return;
+  if(e.target.closest&&e.target.closest("#barLeft,#barCenter,#topLeft,#inspector,#presetModal,#settingsModal,#helpModal,#modal,#menu"))return;
+  e.preventDefault();e.stopPropagation();
+  cutting=true;cutHits=Object.create(null);cutLast={x:e.clientX,y:e.clientY};
+  cutMark(e.clientX,e.clientY);
+},true);
+window.addEventListener("pointermove",function(e){
+  if(!cutting)return;
+  e.preventDefault();
+  var from=cutLast||{x:e.clientX,y:e.clientY};
+  var dx=e.clientX-from.x,dy=e.clientY-from.y;
+  var steps=Math.max(1,Math.ceil(Math.sqrt(dx*dx+dy*dy)/8));
+  for(var i=1;i<=steps;i++)cutMark(from.x+dx*i/steps,from.y+dy*i/steps);
+  cutLast={x:e.clientX,y:e.clientY};
+},true);
+window.addEventListener("pointerup",function(e){
+  if(!cutting)return;
+  cutting=false;
+  var ids=cutHits?Object.keys(cutHits):[];
+  cutHits=null;cutLast=null;
+  if(!ids.length)return;
+  checkpoint();
+  state.links=state.links.filter(function(link){return ids.indexOf(link.id)<0;});
+  drawWires();save();toast("已切断 "+ids.length+" 条连线");
+},true);
 function updateAlignmentGuides(guides){
   if(!alignmentGuidesEl)return;
   if(!guides){alignmentGuidesEl.innerHTML="";return;}
@@ -1950,7 +2015,7 @@ function videoRequiresAdaptiveRatio(n){
   var hasImage=!!(n.params&&n.params.sourceImage)||state.links.some(function(link){
     if(link.to!==n.id)return false;var upstream=nodeById(link.from);return !!(upstream&&upstream.output&&upstream.output.kind==="image");
   });
-  return hasImage&&/seedance[-_. ]?2[-_. ]?5/i.test(videoModelForNode(n));
+  return hasImage&&(n.provider||state.settings.active.video||"")==="ark";
 }
 function videoResolutionOptions(n){
   var model=videoModelForNode(n).toLowerCase().replace(/[_. ]/g,"-");
@@ -2098,12 +2163,12 @@ var wireDeleteButton=document.createElement("button");wireDeleteButton.id="wire-
 wireDeleteButton.addEventListener("pointerdown",function(e){e.stopPropagation();});
 wireDeleteButton.addEventListener("click",function(e){
   e.stopPropagation();if(!selectedLinkId)return;
-  checkpoint();state.links=state.links.filter(function(link){return link.id!==selectedLinkId;});selectedLinkId=null;drawWires();save();
+  removeLinkById(selectedLinkId);
 });
 function hideInspectorForDrag(activeDrag){activeDrag.restoreInspector=inspector.classList.contains("open");inspector.classList.remove("open");}
 document.addEventListener("keydown",function(e){var a=document.activeElement||{};if(e.code==="Space"&&!/INPUT|TEXTAREA|SELECT/.test(a.tagName||"")&&!a.isContentEditable){spacePan=true;e.preventDefault();}});
-document.addEventListener("keyup",function(e){if(e.code==="Space")spacePan=false;});
-window.addEventListener("blur",function(){spacePan=false;});
+document.addEventListener("keyup",function(e){if(e.code==="Space")spacePan=false;if(e.key&&e.key.toLowerCase()==="y")setCutMode(false);});
+window.addEventListener("blur",function(){spacePan=false;setCutMode(false);});
 vp.addEventListener("pointerdown",function(e){
   if(e.target.closest("#toolbar")||e.target.closest("#inspector")||e.target.closest("#menu")||e.target.closest("#zoominfo")||e.target.closest("#board"))return;
   if(!spacePan&&e.button!==1)return;
@@ -2261,6 +2326,12 @@ document.addEventListener("keydown",function(e){
     selectedLinkId=null;drawWires();hideMenu();closeInspector();select(null);board.classList.remove("on");document.getElementById("shortcuts").classList.remove("on");return;
   }
   if(typing)return;
+  if(!mod&&key==="y"){
+    if(document.getElementById("presetModal")&&!document.getElementById("presetModal").hidden)return;
+    if(settingsModal&&settingsModal.classList.contains("on"))return;
+    if(helpModal&&helpModal.classList.contains("on"))return;
+    e.preventDefault();setCutMode(true);return;
+  }
   if(mod&&key==="c"){if(copySelection())e.preventDefault();return;}
   if(mod&&key==="v"){e.preventDefault();pasteClipboard(lastPointer.x,lastPointer.y);return;}
   if(mod&&key==="z"){e.preventDefault();restoreHistory(e.shiftKey?redoStack:undoStack,e.shiftKey?undoStack:redoStack);return;}
@@ -2683,15 +2754,16 @@ function openInspector(n){
       var row=el("div","ie-video-options");
       values.forEach(function(value,index){var b=el("button","ie-video-option");b.type="button";b.textContent=labels[index];
         b.disabled=!!(disabledValues&&disabledValues.indexOf(value)>=0);
-        if(b.disabled)b.title="Seedance 2.5 图生视频仅支持 Auto 比例";
+        if(b.disabled)b.title="连接首帧参考时，方舟要求输出比例跟随首帧，只能使用 Auto";
         b.classList.toggle("on",String(n.params[key])===String(value));b.setAttribute("aria-pressed",String(n.params[key])===String(value));
         b.addEventListener("click",function(){n.params[key]=value;row.querySelectorAll(".ie-video-option").forEach(function(option,i){var active=i===index;option.classList.toggle("on",active);option.setAttribute("aria-pressed",String(active));});saveSoon();if(key==="ratio"){applyMediaAspect(n);refresh(n);}else refreshPreview(n);updateVideoSummary();});
         row.appendChild(b);});
       group.appendChild(row);return row;
     }
-    var ratioGroup=videoGroup("比例");
-    optionRow(ratioGroup,"ratio",["adaptive","16:9","4:3","1:1","3:4","9:16","21:9"],["Auto","16:9","4:3","1:1","3:4","9:16","21:9"]);
-    if(videoRequiresAdaptiveRatio(n)){var ratioHint=el("div","ie-video-hint");ratioHint.textContent="当前有首帧参考：Auto 由模型按首帧自适应，也可手动指定比例（个别模型可能拒绝非 Auto）";ratioGroup.appendChild(ratioHint);}
+    var ratioGroup=videoGroup("比例"),lockRatio=videoRequiresAdaptiveRatio(n);
+    if(lockRatio&&String(n.params.ratio||"adaptive")!=="adaptive"){n.params.ratio="adaptive";saveSoon();}
+    optionRow(ratioGroup,"ratio",["adaptive","16:9","4:3","1:1","3:4","9:16","21:9"],["Auto","16:9","4:3","1:1","3:4","9:16","21:9"],lockRatio?["16:9","4:3","1:1","3:4","9:16","21:9"]:null);
+    if(lockRatio){var ratioHint=el("div","ie-video-hint");ratioHint.textContent="已连接首帧参考：方舟要求输出比例跟随首帧，只能使用 Auto";ratioGroup.appendChild(ratioHint);}
     var resolutions=videoResolutionOptions(n);
     if(resolutions.indexOf(String(n.params.resolution||"720p").toLowerCase())<0)n.params.resolution=resolutions.indexOf("720p")>=0?"720p":resolutions[0];
     var resolutionGroup=videoGroup("清晰度");
@@ -2843,6 +2915,12 @@ async function runNode(nid,opts){
   refresh(n);if(selectedId===nid)openInspector(n);paintProgress(n);
   try{
     var inputs=await resolveWorkflowInputs(gatherInputs(n));
+    var hasFrame=inputs.some(function(input){return input.kind==="image"&&(input.url||input.b64);});
+    if(n.type==="video"&&hasFrame&&pid==="ark"&&String(n.params.ratio||"adaptive")!=="adaptive"){
+      n.params.ratio="adaptive";saveSoon();
+      n.log="检测到首帧参考，比例已自动改为 Auto（方舟要求输出跟随首帧）";
+      if(!opts.quiet)toast("首帧参考：比例已自动改为 Auto");
+    }
     var preparedInputs=await prepareArkVideoInputs(inputs,pid,kind);inputs=preparedInputs.inputs;
     if(preparedInputs.resized){n.log="参考图片已按火山方舟限制自动缩放，继续生成…";refresh(n);}
     var ctx={kind:kind,model:n.model||"",prompt:buildPrompt(n),inputs:inputs,params:n.params||{},cfg:(state.settings.providers[pid]||{}),
@@ -2885,6 +2963,9 @@ async function runNode(nid,opts){
 }
 function describeGenerationError(err){
   var message=String(err&&err.message||err||"生成失败");
+  if(/TaskTypeConstraint|first-frame|first-last-frame/i.test(message)){
+    return "失败：图生视频带首帧时，方舟要求比例必须为 Auto（输出比例跟随首帧）。请把比例切回 Auto 后重试；原始信息："+message;
+  }
   if(/Safe Experience Mode|ModelQuotaExhausted/i.test(message)){
     return "失败：火山方舟账号触发了「安心体验模式」额度上限，该模型服务已被暂停。请到方舟控制台 → 开通管理 → 关闭安心体验模式（关闭后按量付费），再重新运行。原始信息："+message;
   }
@@ -3992,7 +4073,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.1.5";
+var APP_VERSION="1.1.6";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4171,7 +4252,8 @@ function openHelp(){
     '<li>双击空白处或按 <kbd>/</kbd> 打开节点菜单；右键画布可上传素材、添加节点、撤销重做、复制粘贴。</li>'+
     '<li>从节点右侧圆点拖出连线，松手落在目标节点任意位置即可连接；落在空白处会弹出节点菜单并自动连线。</li>'+
     '<li>选中节点后下方出现编辑器，可填写提示词与参数；节点标题栏有重新生成与删除按钮。</li>'+
-    '<li>滚轮上下平移，<kbd>Ctrl</kbd> + 滚轮缩放，<kbd>Shift</kbd> + 滚轮横向平移。</li></ul>'+
+    '<li>滚轮上下平移，<kbd>Ctrl</kbd> + 滚轮缩放，<kbd>Shift</kbd> + 滚轮横向平移。</li>'+
+    '<li>双击一条连线可直接删除；按住 <kbd>Y</kbd> 鼠标变成剪刀，按住左键划过连线可批量切断，松开结束。</li></ul>'+
     '<h3>左下工具</h3><ul>'+
     '<li><b>素材库</b>：查看画布内的图片与视频，点选可定位；把文件拖进画布即可上传。</li>'+
     '<li><b>整理</b>：按连线顺序自动分层排布并居中，可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
@@ -4228,7 +4310,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.1.5";
+var canvasApiVersion="1.1.6";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

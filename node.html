@@ -32,7 +32,7 @@
   #edges path.wire-hit{fill:none;stroke:transparent;stroke-width:18;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer}
   #edges path.wire-hit.selected{stroke:rgba(85,222,255,.16)}
   #edges path.wire-hit.cut{stroke:rgba(255,86,96,.55);stroke-dasharray:7 5}
-  body.cut-mode,body.cut-mode *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Ctext y='20' font-size='19'%3E%E2%9C%82%3C/text%3E%3C/svg%3E") 5 5,crosshair!important}
+  body.cut-mode,body.cut-mode *{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ctext x='1' y='22' font-size='21' fill='%23ffffff' stroke='%23000000' stroke-width='0.9' font-family='Segoe UI Emoji,Apple Color Emoji,sans-serif'%3E%E2%9C%82%3C/text%3E%3C/svg%3E") 6 6,crosshair!important}
   #cutBadge{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:80;display:none;padding:7px 15px;
     border-radius:999px;background:rgba(20,21,25,.92);border:1px solid #3a3d45;color:#cfd3da;font-size:12px;
     box-shadow:0 10px 26px rgba(0,0,0,.45)}
@@ -1102,7 +1102,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.8
+   AI漫剧节点工作台 v4.9
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1780,10 +1780,25 @@ function removeLinkById(linkId){
   drawWires();save();toast("已删除连接线");
   return true;
 }
+var lastWireClick={id:"",at:0};
+function updateWireSelection(){
+  edgesEl.querySelectorAll("path.wire-hit").forEach(function(path){
+    path.classList.toggle("selected",path.dataset.linkId===selectedLinkId);
+  });
+  positionSelectedWireDelete();
+}
 edgesEl.addEventListener("pointerdown",function(e){if(e.target.closest&&e.target.closest(".wire-hit"))e.stopPropagation();});
 edgesEl.addEventListener("click",function(e){
   var hit=e.target.closest&&e.target.closest(".wire-hit");if(!hit)return;
-  selectedLinkId=hit.dataset.linkId;drawWires();
+  e.stopPropagation();
+  var linkId=hit.dataset.linkId,now=Date.now();
+  if(lastWireClick.id===linkId&&now-lastWireClick.at<450){
+    lastWireClick={id:"",at:0};
+    removeLinkById(linkId);
+    return;
+  }
+  lastWireClick={id:linkId,at:now};
+  selectedLinkId=linkId;updateWireSelection();
 });
 edgesEl.addEventListener("dblclick",function(e){
   var hit=e.target.closest&&e.target.closest(".wire-hit");if(!hit)return;
@@ -2304,7 +2319,7 @@ vp.addEventListener("wheel",function(e){if(e.target.closest("#inspector"))return
   if(e.shiftKey&&!dx){dx=dy;dy=0;}
   state.view.x-=dx;state.view.y-=dy;applyView();},{passive:false});
 vp.addEventListener("dblclick",function(e){
-  if(e.target.closest(".nd")||e.target.closest(".gframe")||e.target.closest("#toolbar")||e.target.closest("#inspector"))return;
+  if(e.target.closest(".nd")||e.target.closest(".gframe")||e.target.closest(".wire-hit")||e.target.closest("#toolbar")||e.target.closest("#inspector"))return;
   showMenu(e.clientX,e.clientY,selectedId);
 });
 vp.addEventListener("contextmenu",function(e){
@@ -4073,7 +4088,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.1.6";
+var APP_VERSION="1.1.7";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 function persistCanvasBook(){
@@ -4310,7 +4325,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.1.6";
+var canvasApiVersion="1.1.7";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

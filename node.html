@@ -544,7 +544,7 @@
     opacity:0;pointer-events:none;transition:opacity .12s ease,background .12s ease}
   .nd:hover .port,.nd.selected .port,.nd.near .port,.nd.linking .port{opacity:1;pointer-events:auto}
   .port:after{content:"+"}
-  .port.in{left:-14px}.port.out{right:-14px}
+  .port.in{left:-26px}.port.out{right:-26px}
   .port:hover{background:#f4f5f7;border-color:#fff;color:#151619}
   .nd.collapsed .port{top:15px}
   .multi-frame{position:absolute;pointer-events:none;z-index:2;border:1px dashed rgba(150,200,230,.55);
@@ -823,6 +823,8 @@
   .pm-colors{display:flex;height:100%}
   .pm-colors i{flex:1;display:block}
   .pm-cover{width:100%;height:100%;object-fit:cover;display:block}
+  .pm-rhythm{position:absolute;left:12%;right:12%;top:26%;bottom:26%;display:flex;gap:5px;align-items:stretch}
+  .pm-rhythm i{flex:1;border-radius:3px;background:linear-gradient(180deg,#5fe0ff,#2c6f86);opacity:.92}
   .pm-empty{grid-column:1/-1;padding:56px 0 40px;text-align:center;color:#6d707a;font-size:13px;line-height:1.8}
   .pm-foot{display:flex;justify-content:flex-end;gap:10px;padding:12px 18px;border-top:1px solid #26282d}
   .pm-foot button{min-height:34px;padding:0 16px;border:1px solid #3a3d45;border-radius:8px;background:#23252b;
@@ -1211,7 +1213,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.17
+   AI漫剧节点工作台 v4.18
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1305,7 +1307,11 @@ var NODETYPES={
             {k:"count",l:"生成数量",t:"select",o:[1,2,4],def:1},
             {k:"watermark",l:"添加水印",t:"checkbox",def:false},
             {k:"sourceImage",l:"首帧参考",t:"hidden",def:""}],
-    buildPrompt:function(n){var p=n.params||{};return (p.motion||"自然运镜");}},
+    buildPrompt:function(n){var p=n.params||{},parts=[];parts.push(p.motion||"自然运镜");
+      if(p.style&&p.style!=="auto")parts.push("风格："+presetPromptText("style",p.style));
+      if(p.composition&&p.composition!=="auto")parts.push("构图："+presetPromptText("composition",p.composition));
+      if(p.rhythm&&p.rhythm!=="auto")parts.push("节奏："+presetPromptText("rhythm",p.rhythm));
+      return parts.join("；");}},
   audio:{label:"音频生成",icon:"🎧",color:"#10b981",kind:"audio",inKinds:["text"],
     fields:[{k:"text",l:"描述 / 文本",t:"textarea",ph:"描述你想要的声音",def:""},
             {k:"mode",l:"音频类型",t:"select",o:["voice","music","sfx","timbre"],def:"voice"}],
@@ -1870,7 +1876,7 @@ function drawWires(){
     if(isHidden(a)||isHidden(b))return;
     var p1=portPos(a,"out"),p2=portPos(b,"in");
     var d=wire(p1,p2);
-    h+='<path class="wire-glow" d="'+d+'"/><path class="wire" d="'+d+'" marker-end="url(#arw)"/><path class="wire-flow" d="'+d+'"/><path class="wire-hit'+(l.id===selectedLinkId?' selected':'')+'" data-link-id="'+l.id+'" d="'+d+'"/>';
+    h+='<path class="wire-glow" d="'+d+'"/><path class="wire" d="'+d+'"/><path class="wire-flow" d="'+d+'"/><path class="wire-hit'+(l.id===selectedLinkId?' selected':'')+'" data-link-id="'+l.id+'" d="'+d+'"/>';
   });
   edgesEl.insertAdjacentHTML("beforeend",h);
   positionSelectedWireDelete();
@@ -2873,6 +2879,21 @@ function openInspector(n){
     camSelect.addEventListener("change",function(){n.params.camera=camSelect.value;saveSoon();refreshPreview(n);});
     camItem.appendChild(camSelect);quick.appendChild(camItem);
     insBody.appendChild(quick);
+  }
+  if(n.type==="video"){
+    ["style","composition","rhythm"].forEach(function(key){if(n.params[key]===undefined)n.params[key]="auto";});
+    var vquick=el("div","ie-image-quick");
+    [["style","风格","✧"],["composition","构图","▣"],["rhythm","节奏","♫"]].forEach(function(spec){
+      var item=el("label","ie-image-quick-item"),icon=el("span","ie-image-quick-icon");icon.textContent=spec[2];item.appendChild(icon);
+      var open=el("button","ie-image-open");open.type="button";
+      var value=n.params[spec[0]];
+      open.textContent=String(value&&value!=="auto"?value:"选择"+spec[1]);
+      open.title="打开"+spec[1]+"预设";
+      open.addEventListener("pointerdown",function(e){e.stopPropagation();});
+      open.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();openPresetPicker(spec[0],n);});
+      item.appendChild(open);vquick.appendChild(item);
+    });
+    insBody.appendChild(vquick);
   }
 
   function uploadImage(){
@@ -4254,14 +4275,26 @@ var PALETTE_PRESETS=[
   {id:"orangecyan",name:"橙青迷境色调",colors:["#1a0f0a","#b4491c","#2a8a86","#7fd6cf"]},
   {id:"midnight",name:"午夜青色调",colors:["#060d12","#10323c","#2a6f7a","#9fd8dd"]}
 ];
+var RHYTHM_PRESETS=[
+  {id:"oner",name:"一镜到底",bars:[6],prompt:"一镜到底，长镜头连续运动，全程不切镜"},
+  {id:"calm",name:"舒缓平稳",bars:[4,3,3],prompt:"舒缓平稳的节奏，镜头缓慢推移，画面稳定"},
+  {id:"multishot",name:"多景别交替",bars:[2,3,2,3],prompt:"多景别交替，远景与特写来回切换，保持空间连贯"},
+  {id:"montage",name:"蒙太奇快切",bars:[1,1,2,1,1],prompt:"蒙太奇快切，短镜头密集切换，节奏强烈"},
+  {id:"speedramp",name:"升格变速",bars:[3,1,3],prompt:"升格变速，慢动作与正常速度交替出现"},
+  {id:"frameskip",name:"抽帧拖影",bars:[1,2,1,2],prompt:"抽帧拖影，保留运动残影与轻微卡顿感"},
+  {id:"shotreverse",name:"正反交替",bars:[2,2,2,2],prompt:"正反打交替，两个视角来回切换对话"},
+  {id:"accelerate",name:"渐进加速",bars:[4,3,2,1],prompt:"节奏渐进加速，镜头运动逐渐变快直到收尾"},
+  {id:"crosscut",name:"交叉剪辑",bars:[2,1,2,1,2],prompt:"交叉剪辑，两条线索交错推进并汇总"}
+];
 var PRESET_KEY="ic-presets-v1";
-var presetStore={compositions:[],palettes:[]};
+var presetStore={compositions:[],palettes:[],rhythms:[]};
 function loadPresetStore(){
   try{
     var raw=localStorage.getItem(PRESET_KEY);if(!raw)return;
     var data=JSON.parse(raw);
     if(Array.isArray(data.compositions))presetStore.compositions=data.compositions.filter(function(item){return item&&item.id&&item.image;});
     if(Array.isArray(data.palettes))presetStore.palettes=data.palettes.filter(function(item){return item&&item.id&&Array.isArray(item.colors)&&item.colors.length;});
+    if(Array.isArray(data.rhythms))presetStore.rhythms=data.rhythms.filter(function(item){return item&&item.id&&item.name;});
   }catch(_){}
 }
 function savePresetStore(){
@@ -4309,22 +4342,25 @@ var presetState={kind:"style",tab:"official",query:"",selectedId:"",node:null,cr
 var PRESET_META={
   style:{label:"风格",officialLabel:"官方风格",mineLabel:"我的风格",empty:"还没有自定义风格，官方风格已内置 "+STYLE_PRESETS.length+" 种。"},
   composition:{label:"构图",officialLabel:"官方构图",mineLabel:"我的构图",empty:"还没有导入构图，点击右上角「导入构图」可以从本地上传参考图。"},
-  palette:{label:"配色",officialLabel:"官方配色",mineLabel:"我的配色",empty:"还没有自定义配色，点击右上角「创建配色」按色值新建。"}
+  palette:{label:"配色",officialLabel:"官方配色",mineLabel:"我的配色",empty:"还没有自定义配色，点击右上角「创建配色」按色值新建。"},
+  rhythm:{label:"节奏",officialLabel:"官方节奏",mineLabel:"我的节奏",empty:"还没有自定义节奏，官方节奏已内置 "+RHYTHM_PRESETS.length+" 种；可导入 JSON 或新建。"}
 };
 function officialPresets(kind){
   if(kind==="style")return STYLE_PRESETS;
   if(kind==="composition")return COMPOSITION_PRESETS;
+  if(kind==="rhythm")return RHYTHM_PRESETS;
   return PALETTE_PRESETS;
 }
 function minePresets(kind){
   if(kind==="composition")return presetStore.compositions;
   if(kind==="palette")return presetStore.palettes;
+  if(kind==="rhythm")return presetStore.rhythms;
   return [];
 }
 function activePresetList(){
   return presetState.tab==="mine"?minePresets(presetState.kind):officialPresets(presetState.kind);
 }
-function presetParamName(kind){return kind==="style"?"style":kind==="composition"?"composition":"palette";}
+function presetParamName(kind){return kind==="style"?"style":kind==="composition"?"composition":kind==="rhythm"?"rhythm":"palette";}
 function currentPresetId(kind,node){
   var params=(node&&node.params)||{};
   return params[presetParamName(kind)+"Id"]||"";
@@ -4348,7 +4384,7 @@ function renderPresetModal(){
   });
   presetSearchEl.placeholder="搜索"+meta.label;
   presetExtraEl.hidden=presetState.tab!=="mine"||kind==="style";
-  presetExtraEl.textContent=kind==="composition"?"＋ 导入构图":"＋ 创建配色";
+  presetExtraEl.textContent=kind==="composition"?"＋ 导入构图":kind==="rhythm"?"＋ 导入节奏":"＋ 创建配色";
   var items=activePresetList().filter(function(item){
     var query=presetState.query.trim().toLowerCase();
     return !query||String(item.name||"").toLowerCase().indexOf(query)>=0;
@@ -4371,6 +4407,13 @@ function renderPresetModal(){
       thumb.style.background=item.image?"#0b0d11":"linear-gradient(180deg,#151a22,#0b0d11)";
       if(item.image){var cover=el("img","pm-cover");cover.src=item.image;cover.alt=item.name;thumb.appendChild(cover);}
       thumb.insertAdjacentHTML("beforeend",presetGuide(item.guide||"thirds"));
+    }else if(kind==="rhythm"){
+      thumb.style.background="linear-gradient(180deg,#151a22,#0b0d11)";
+      var track=el("span","pm-rhythm");
+      (item.bars&&item.bars.length?item.bars:[2,2,2]).forEach(function(weight){
+        var bar=el("i");bar.style.flex=String(weight);track.appendChild(bar);
+      });
+      thumb.appendChild(track);
     }else{
       var strip=el("span","pm-colors");
       item.colors.forEach(function(color){var block=el("i");block.style.background=color;strip.appendChild(block);});
@@ -4386,6 +4429,57 @@ function renderPresetModal(){
     card.addEventListener("dblclick",function(){presetState.selectedId=item.id;applyPresetSelection();});
     presetBodyEl.appendChild(card);
   });
+  if(kind==="rhythm"&&presetState.tab==="mine")renderRhythmCreator();
+}
+function renderRhythmCreator(){
+  var wrap=el("div","pm-create");
+  var nameInput=el("input");nameInput.type="text";nameInput.placeholder="节奏名称";nameInput.value="我的节奏";
+  var descInput=el("input");descInput.type="text";descInput.placeholder="节奏描述，如：快切三段后定格";descInput.style.minWidth="240px";
+  var barsInput=el("input");barsInput.type="text";barsInput.placeholder="镜头段数权重，如 2,1,2";barsInput.value="2,1,2";barsInput.style.minWidth="130px";
+  var save=el("button");save.type="button";save.textContent="保存节奏";
+  save.addEventListener("click",function(){
+    var name=nameInput.value.trim()||"我的节奏";
+    var prompt=descInput.value.trim()||name;
+    var bars=String(barsInput.value||"").split(/[,，\s]+/).map(function(part){return Number(part);}).filter(function(value){return value>0;});
+    presetStore.rhythms.push({id:"r"+Date.now().toString(36),name:name,prompt:prompt,bars:bars.length?bars:[2,2,2]});
+    if(!savePresetStore())return;
+    presetState.tab="mine";
+    presetState.selectedId=presetStore.rhythms[presetStore.rhythms.length-1].id;
+    renderPresetModal();toast("已保存自定义节奏");
+  });
+  wrap.appendChild(nameInput);wrap.appendChild(descInput);wrap.appendChild(barsInput);wrap.appendChild(save);
+  presetBodyEl.appendChild(wrap);
+}
+function importRhythms(){
+  var input=document.createElement("input");input.type="file";input.accept="application/json,.json";
+  input.onchange=function(){
+    var file=input.files&&input.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      var list;
+      try{
+        var data=JSON.parse(String(reader.result||"[]"));
+        list=Array.isArray(data)?data:(data&&Array.isArray(data.rhythms)?data.rhythms:[]);
+      }catch(_){toast("JSON 格式不正确");return;}
+      var added=0;
+      list.forEach(function(entry){
+        if(!entry||!entry.name)return;
+        var bars=Array.isArray(entry.bars)?entry.bars.map(Number).filter(function(value){return value>0;}):[];
+        presetStore.rhythms.push({
+          id:"r"+Date.now().toString(36)+added,
+          name:String(entry.name).slice(0,40),
+          prompt:String(entry.prompt||entry.name).slice(0,300),
+          bars:bars.length?bars:[2,2,2]
+        });
+        added++;
+      });
+      if(!added){toast("JSON 里没有可导入的节奏");return;}
+      if(!savePresetStore())return;
+      presetState.tab="mine";renderPresetModal();toast("已导入 "+added+" 个节奏");
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 function renderPaletteCreator(){
   var wrap=el("div","pm-create");
@@ -4459,6 +4553,7 @@ function applyPresetSelection(){
 presetSearchEl.addEventListener("input",function(){presetState.query=presetSearchEl.value;renderPresetModal();});
 presetExtraEl.addEventListener("click",function(){
   if(presetState.kind==="composition"){importComposition();return;}
+  if(presetState.kind==="rhythm"){importRhythms();return;}
   presetState.creating=true;renderPresetModal();
 });
 presetOkEl.addEventListener("click",applyPresetSelection);
@@ -4471,7 +4566,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.5";
+var APP_VERSION="1.2.6";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5050,7 +5145,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.5";
+var canvasApiVersion="1.2.6";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

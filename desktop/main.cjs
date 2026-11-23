@@ -99,7 +99,7 @@ function installDownloadedUpdate() {
 }
 
 app.setName(PRODUCT_NAME);
-app.setPath("userData", path.join(app.getPath("appData"), "InfiniteCanvasDesktop"));
+app.setPath("userData", process.env.IC_USER_DATA || path.join(app.getPath("appData"), "InfiniteCanvasDesktop"));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -407,6 +407,153 @@ async function forwardArkRequest(request, response, arkPath) {
   upstream.end();
 }
 
+/* ---------------- 本地素材 / 生成历史存储 ---------------- */
+const MAX_STORAGE_SAVE_BYTES = 512 * 1024 * 1024;
+const STORAGE_CONFIG_FILE = path.join(app.getPath("userData"), "storage.json");
+
+function defaultStorageConfig() {
+  const base = app.getPath("userData");
+  return { mediaRoot: path.join(base, "作品素材"), historyRoot: path.join(base, "生成历史") };
+}
+function readStorageConfig() {
+  const fallback = defaultStorageConfig();
+  try {
+    const parsed = JSON.parse(fs.readFileSync(STORAGE_CONFIG_FILE, "utf8"));
+    return {
+      mediaRoot: parsed.mediaRoot && path.isAbsolute(parsed.mediaRoot) ? parsed.mediaRoot : fallback.mediaRoot,
+      historyRoot: parsed.historyRoot && path.isAbsolute(parsed.historyRoot) ? parsed.historyRoot : fallback.historyRoot
+    };
+  } catch {
+    return fallback;
+  }
+}
+function writeStorageConfig(config) {
+  fs.mkdirSync(path.dirname(STORAGE_CONFIG_FILE), { recursive: true });
+  fs.writeFileSync(STORAGE_CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
+}
+function safeName(value, fallback) {
+  const cleaned = String(value || "").replace(/[\\/:*?"<>|\r\n\t]/g, "_").replace(/^\.+/, "").trim().slice(0, 90);
+  return cleaned || fallback;
+}
+function uniqueStoragePath(directory, filename) {
+  const extension = path.extname(filename);
+  const base = filename.slice(0, filename.length - extension.length);
+  let candidate = path.join(directory, filename);
+  let index = 1;
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(directory, base + "-" + index + extension);
+    index += 1;
+  }
+  return candidate;
+}
+function downloadRemoteFile(url, target) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, {
+      headers: { "User-Agent": "InfiniteCanvas-Desktop" },
+      family: 4,
+      timeout: 60000
+    }, response => {
+      const status = response.statusCode || 0;
+      if ([301, 302, 303, 307, 308].indexOf(status) >= 0 && response.headers.location) {
+        response.resume();
+        downloadRemoteFile(new URL(response.headers.location, url).toString(), target).then(resolve, reject);
+        return;
+      }
+      if (status !== 200) {
+        response.resume();
+        reject(new Error("下载素材失败：HTTP " + status));
+        return;
+      }
+      const output = fs.createWriteStream(target);
+      let size = 0;
+      response.on("data", chunk => {
+        size += chunk.length;
+        if (size > MAX_STORAGE_SAVE_BYTES) response.destroy(new Error("素材超过 512 MB"));
+      });
+      response.on("error", reject);
+      output.on("error", reject);
+      output.on("finish", resolve);
+      response.pipe(output);
+    });
+    request.on("timeout", () => request.destroy(new Error("下载素材超时")));
+    request.on("error", reject);
+  });
+}
+async function handleStorageRequest(request, response, pathname) {
+  const config = readStorageConfig();
+  if (pathname === "/infinite-canvas/storage" && request.method === "GET") {
+    sendJson(response, 200, { ...config, defaults: defaultStorageConfig() });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage" && request.method === "POST") {
+    const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+    const next = { mediaRoot: config.mediaRoot, historyRoot: config.historyRoot };
+    if (body.mediaRoot) next.mediaRoot = path.resolve(String(body.mediaRoot));
+    if (body.historyRoot) next.historyRoot = path.resolve(String(body.historyRoot));
+    fs.mkdirSync(next.mediaRoot, { recursive: true });
+    fs.mkdirSync(next.historyRoot, { recursive: true });
+    writeStorageConfig(next);
+    sendJson(response, 200, { ...next });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage/pick" && request.method === "POST") {
+    const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: body.target === "history" ? "选择生成历史保存位置" : "选择素材保存位置",
+      properties: ["openDirectory", "createDirectory"]
+    });
+    if (result.canceled || !result.filePaths.length) {
+      sendJson(response, 200, { canceled: true });
+      return;
+    }
+    sendJson(response, 200, { path: result.filePaths[0] });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage/save" && request.method === "POST") {
+    const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+    const canvas = safeName(body.canvas, "未命名画布");
+    if (body.kind === "history") {
+      const directory = path.join(config.historyRoot, canvas);
+      fs.mkdirSync(directory, { recursive: true });
+      const file = path.join(directory, "history.jsonl");
+      const entry = Object.assign({ at: new Date().toISOString(), canvas: canvas }, body.entry || {});
+      fs.appendFileSync(file, JSON.stringify(entry) + "\n", "utf8");
+      sendJson(response, 200, { ok: true, path: file });
+      return;
+    }
+    const directory = path.join(config.mediaRoot, canvas);
+    fs.mkdirSync(directory, { recursive: true });
+    const filename = safeName(body.filename, "media");
+    const target = uniqueStoragePath(directory, filename);
+    if (body.remoteUrl) {
+      await downloadRemoteFile(String(body.remoteUrl), target);
+    } else {
+      const data = String(body.dataUrl || "");
+      const comma = data.indexOf(",");
+      const buffer = Buffer.from(comma >= 0 ? data.slice(comma + 1) : data, "base64");
+      if (!buffer.length) throw new Error("没有可保存的素材数据");
+      if (buffer.length > MAX_STORAGE_SAVE_BYTES) throw new Error("素材超过 512 MB");
+      fs.writeFileSync(target, buffer);
+    }
+    sendJson(response, 200, { ok: true, path: target, name: path.basename(target) });
+    return;
+  }
+  if (pathname === "/infinite-canvas/storage/history" && request.method === "GET") {
+    const url = new URL(request.url, "http://127.0.0.1");
+    const canvas = safeName(url.searchParams.get("canvas"), "未命名画布");
+    const file = path.join(config.historyRoot, canvas, "history.jsonl");
+    const entries = [];
+    try {
+      fs.readFileSync(file, "utf8").split("\n").filter(Boolean).slice(-300).forEach(line => {
+        try { entries.push(JSON.parse(line)); } catch (_) {}
+      });
+    } catch (_) {}
+    sendJson(response, 200, { canvas: canvas, entries: entries });
+    return;
+  }
+  sendJson(response, 404, { error: { message: "找不到本地存储接口" } });
+}
+
 async function handleRequest(request, response, port) {
   if (!isLoopback(request.socket.remoteAddress) || request.headers.host !== "127.0.0.1:" + port) {
     sendJson(response, 403, { error: { message: "仅允许本机桌面程序访问" } });
@@ -491,6 +638,21 @@ async function handleRequest(request, response, port) {
       return;
     }
     sendJson(response, 404, { error: { message: "找不到更新服务" } });
+    return;
+  }
+
+  if (pathname === "/infinite-canvas/storage" || pathname.startsWith("/infinite-canvas/storage/")) {
+    if ((request.headers.origin && request.headers.origin !== expectedOrigin)
+      || (request.headers.referer && !request.headers.referer.startsWith(expectedOrigin + "/"))) {
+      sendJson(response, 403, { error: { message: "仅允许桌面画布访问本地存储" } });
+      return;
+    }
+    try {
+      await handleStorageRequest(request, response, pathname);
+    } catch (error) {
+      if (!response.headersSent) sendJson(response, error.statusCode || 500, { error: { message: error.message || "本地存储操作失败" } });
+      else response.destroy(error);
+    }
     return;
   }
 

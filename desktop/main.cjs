@@ -413,15 +413,23 @@ const STORAGE_CONFIG_FILE = path.join(app.getPath("userData"), "storage.json");
 
 function defaultStorageConfig() {
   const base = app.getPath("userData");
-  return { mediaRoot: path.join(base, "作品素材"), historyRoot: path.join(base, "生成历史") };
+  const media = path.join(base, "作品素材");
+  return {
+    imageRoot: path.join(media, "图片"),
+    videoRoot: path.join(media, "视频"),
+    historyRoot: path.join(base, "生成历史")
+  };
 }
 function readStorageConfig() {
   const fallback = defaultStorageConfig();
   try {
     const parsed = JSON.parse(fs.readFileSync(STORAGE_CONFIG_FILE, "utf8"));
+    const legacy = parsed.mediaRoot && path.isAbsolute(parsed.mediaRoot) ? parsed.mediaRoot : "";
+    const pick = (value, fallbackValue) => (value && path.isAbsolute(value) ? value : fallbackValue);
     return {
-      mediaRoot: parsed.mediaRoot && path.isAbsolute(parsed.mediaRoot) ? parsed.mediaRoot : fallback.mediaRoot,
-      historyRoot: parsed.historyRoot && path.isAbsolute(parsed.historyRoot) ? parsed.historyRoot : fallback.historyRoot
+      imageRoot: pick(parsed.imageRoot, legacy || fallback.imageRoot),
+      videoRoot: pick(parsed.videoRoot, legacy || fallback.videoRoot),
+      historyRoot: pick(parsed.historyRoot, fallback.historyRoot)
     };
   } catch {
     return fallback;
@@ -487,10 +495,12 @@ async function handleStorageRequest(request, response, pathname) {
   }
   if (pathname === "/infinite-canvas/storage" && request.method === "POST") {
     const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
-    const next = { mediaRoot: config.mediaRoot, historyRoot: config.historyRoot };
-    if (body.mediaRoot) next.mediaRoot = path.resolve(String(body.mediaRoot));
+    const next = { imageRoot: config.imageRoot, videoRoot: config.videoRoot, historyRoot: config.historyRoot };
+    if (body.imageRoot) next.imageRoot = path.resolve(String(body.imageRoot));
+    if (body.videoRoot) next.videoRoot = path.resolve(String(body.videoRoot));
     if (body.historyRoot) next.historyRoot = path.resolve(String(body.historyRoot));
-    fs.mkdirSync(next.mediaRoot, { recursive: true });
+    fs.mkdirSync(next.imageRoot, { recursive: true });
+    fs.mkdirSync(next.videoRoot, { recursive: true });
     fs.mkdirSync(next.historyRoot, { recursive: true });
     writeStorageConfig(next);
     sendJson(response, 200, { ...next });
@@ -499,7 +509,10 @@ async function handleStorageRequest(request, response, pathname) {
   if (pathname === "/infinite-canvas/storage/pick" && request.method === "POST") {
     const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: body.target === "history" ? "选择生成历史保存位置" : "选择素材保存位置",
+      title: body.target === "history" ? "选择生成历史保存位置"
+        : body.target === "video" ? "选择视频保存位置"
+        : body.target === "image" ? "选择图片保存位置"
+        : "选择保存位置",
       properties: ["openDirectory", "createDirectory"]
     });
     if (result.canceled || !result.filePaths.length) {
@@ -521,7 +534,9 @@ async function handleStorageRequest(request, response, pathname) {
       sendJson(response, 200, { ok: true, path: file });
       return;
     }
-    const directory = path.join(config.mediaRoot, canvas);
+    const mediaKind = String(body.mediaKind || "") === "video" ? "video" : "image";
+    const root = mediaKind === "video" ? config.videoRoot : config.imageRoot;
+    const directory = path.join(root, canvas);
     fs.mkdirSync(directory, { recursive: true });
     const filename = safeName(body.filename, "media");
     const target = uniqueStoragePath(directory, filename);

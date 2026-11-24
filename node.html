@@ -191,10 +191,9 @@
     border:2px solid var(--accent);box-shadow:0 1px 4px rgba(15,23,42,.25);cursor:nwse-resize;display:none;z-index:6;touch-action:none}
   .nd:hover .nhandle,.nd.selected .nhandle{display:block}
   .nd.collapsed .bd,.nd.collapsed .ft{display:none}
-  .port{position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;border:2.5px solid #8ea7c2;
-    top:50%;margin-top:-7px;cursor:crosshair;z-index:5}
+  .port{position:absolute;width:14px;height:14px;border-radius:50%;top:50%;margin-top:-7px;cursor:crosshair;z-index:5}
   .port.in{left:-8px}
-  .port.out{right:-8px;background:#8ea7c2}
+  .port.out{right:-8px}
   .port:hover{border-color:var(--accent);background:var(--accent)}
   .port.out:hover{background:var(--accent)}
 
@@ -769,7 +768,8 @@
   .nd .nd-shell{border-color:#49505b}
   .nd.selected .nd-shell{border-color:#56dfff;box-shadow:0 0 0 1px rgba(86,223,255,.36),0 0 24px rgba(49,203,239,.12),0 18px 42px rgba(0,0,0,.32)}
   .nd .port{border-color:rgba(255,255,255,.52);color:#ffffff;box-shadow:0 5px 14px rgba(0,0,0,.42);
-    transition:opacity .12s ease,background .12s ease,color .12s ease,border-color .12s ease,transform .08s ease}
+    will-change:transform;
+    transition:opacity .12s ease,background .12s ease,color .12s ease,border-color .12s ease}
   .nd .port:hover{border-color:#ffffff;background:#ffffff;color:#151619;box-shadow:0 0 16px rgba(255,255,255,.4)}
   #viewport.connect-mode,.connect-mode .nd{cursor:crosshair!important}
   #viewport.connect-mode .nd-shell{border-color:#49c8e6}
@@ -904,6 +904,9 @@
     cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
   .bar button.iconOnly{width:36px;padding:0}
   .bar button.iconOnly span{display:none}
+  #barCenter button[data-act="assistant"]{width:38px;overflow:visible}
+  #barCenter button[data-act="assistant"] span.ai-orb{display:inline-flex}
+  #barCenter button[data-act="assistant"] .ai-orb{width:26px;height:26px}
   .bar button.iconOnly svg{width:17px;height:17px}
   .bar button.zoom{width:auto;padding:0 11px;font-size:12px;color:#cfd3da}
   .bar button.zoom span{display:inline}
@@ -1288,7 +1291,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.20
+   AI漫剧节点工作台 v4.21
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -2318,26 +2321,67 @@ vp.addEventListener("pointermove",function(e){
       var near=nearPointer.x>rect.left-pad&&nearPointer.x<rect.right+pad&&nearPointer.y>rect.top-pad&&nearPointer.y<rect.bottom+pad;
       element.classList.toggle("near",near);
     });
-    var magnetRadius=26,magnetLimit=9,best=null,bestDistance=Infinity;
-    nodesEl.querySelectorAll(".port").forEach(function(port){
-      var rect=port.getBoundingClientRect();
-      var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-      var distance=Math.hypot(nearPointer.x-cx,nearPointer.y-cy);
-      if(distance<magnetRadius&&distance<bestDistance){bestDistance=distance;best={el:port,cx:cx,cy:cy};}
-      else port.style.transform="";
-    });
-    if(best){
-      var dx=nearPointer.x-best.cx,dy=nearPointer.y-best.cy;
-      var length=Math.hypot(dx,dy)||1;
-      var reach=Math.min(magnetLimit,length);
-      best.el.style.transform="translate("+(dx/length*reach).toFixed(1)+"px,"+(dy/length*reach).toFixed(1)+"px)";
-    }
+    updatePortMagnet();
   });
 },{passive:true});
 vp.addEventListener("pointerleave",function(){
   nodesEl.querySelectorAll(".nd.near").forEach(function(element){element.classList.remove("near");});
-  nodesEl.querySelectorAll(".port").forEach(function(port){port.style.transform="";});
+  magnetPorts.forEach(function(state,port){
+    port.style.transform="";port.__mx=0;port.__my=0;
+  });
+  magnetPorts.clear();
 });
+
+/* ---- 连接加号磁吸：范围内朝光标平滑偏移 ---- */
+var magnetRadius=54,magnetLimit=16;
+var magnetPorts=new Map(),magnetRaf=0;
+function magnetSchedule(){if(!magnetRaf)magnetRaf=requestAnimationFrame(magnetStep);}
+function magnetStep(){
+  magnetRaf=0;
+  magnetPorts.forEach(function(state,port){
+    state.x+=(state.tx-state.x)*0.32;
+    state.y+=(state.ty-state.y)*0.32;
+    var settled=Math.abs(state.tx-state.x)<0.08&&Math.abs(state.ty-state.y)<0.08;
+    if(settled){state.x=state.tx;state.y=state.ty;}
+    port.__mx=state.x;port.__my=state.y;
+    if(!state.x&&!state.y){
+      port.style.transform="";
+      magnetPorts.delete(port);
+      return;
+    }
+    port.style.transform="translate3d("+state.x.toFixed(2)+"px,"+state.y.toFixed(2)+"px,0)";
+    if(!settled)magnetSchedule();
+  });
+}
+function magnetAim(port,tx,ty){
+  if(!tx&&!ty){
+    var existing=magnetPorts.get(port);
+    if(existing){existing.tx=0;existing.ty=0;magnetSchedule();}
+    return;
+  }
+  var state=magnetPorts.get(port);
+  if(!state){state={x:port.__mx||0,y:port.__my||0,tx:0,ty:0};magnetPorts.set(port,state);}
+  state.tx=tx;state.ty=ty;
+  magnetSchedule();
+}
+function updatePortMagnet(){
+  var best=null,bestDistance=Infinity;
+  nodesEl.querySelectorAll(".port").forEach(function(port){
+    var rect=port.getBoundingClientRect();
+    var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+    var distance=Math.hypot(nearPointer.x-cx,nearPointer.y-cy);
+    if(distance<magnetRadius&&distance<bestDistance){bestDistance=distance;best={el:port,cx:cx,cy:cy};}
+  });
+  magnetPorts.forEach(function(state,port){
+    if(!best||port!==best.el)magnetAim(port,0,0);
+  });
+  if(best){
+    var dx=nearPointer.x-best.cx,dy=nearPointer.y-best.cy;
+    var length=Math.hypot(dx,dy)||1;
+    var reach=Math.min(magnetLimit,length);
+    magnetAim(best.el,dx/length*reach,dy/length*reach);
+  }
+}
 
 var pendingWire=null;
 function drawPendingWire(){
@@ -4962,7 +5006,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.8";
+var APP_VERSION="1.2.9";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5745,7 +5789,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.8";
+var canvasApiVersion="1.2.9";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

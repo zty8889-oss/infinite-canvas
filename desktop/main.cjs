@@ -646,6 +646,23 @@ async function handleStorageRequest(request, response, pathname) {
     sendJson(response, 200, { ok: true, path: file });
     return;
   }
+  if (pathname === "/infinite-canvas/storage/reveal" && request.method === "POST") {
+    const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+    const target = path.resolve(String(body.path || ""));
+    const roots = [
+      config.imageRoot,
+      config.videoRoot,
+      config.historyRoot,
+      config.canvasRoot,
+      path.join(app.getPath("userData"), "media")
+    ];
+    const insideRoot = roots.some(root => target === root || target.startsWith(root + path.sep));
+    if (!insideRoot) throw Object.assign(new Error("只能打开素材目录内的文件"), { statusCode: 403 });
+    if (!fs.existsSync(target)) throw Object.assign(new Error("文件不存在"), { statusCode: 404 });
+    shell.showItemInFolder(target);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
   sendJson(response, 404, { error: { message: "找不到本地存储接口" } });
 }
 

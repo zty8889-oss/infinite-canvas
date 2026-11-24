@@ -81,11 +81,18 @@
   .al-tabs{display:flex;gap:8px;margin-bottom:12px}
   .al-tabs button{height:30px;padding:0 12px;border:1px solid #2f3137;border-radius:8px;background:#1b1c21;color:#aeb2bc;font-size:12px;cursor:pointer}
   .al-tabs button.on{background:#2a2c33;border-color:#4a4d55;color:#fff}
+  .al-scope{display:flex;gap:6px;margin-bottom:8px}
+  .al-scope button{height:26px;padding:0 13px;border:1px solid #2a2c32;border-radius:999px;background:transparent;
+    color:#8b9099;font-size:11.5px;cursor:pointer}
+  .al-scope button:hover{color:#dfe2e8}
+  .al-scope button.on{background:#26282e;border-color:#43464e;color:#fff}
+  .al-box.history-mode #alFolders,.al-box.history-mode #alFolderTitle,.al-box.history-mode #alNewFolder{display:none}
   .al-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start}
   .al-item{position:relative;border:1px solid #2c2e34;border-radius:12px;background:#101216;overflow:hidden;cursor:pointer}
   .al-item img,.al-item video{width:100%;height:118px;object-fit:cover;display:block}
   .al-item audio{width:100%;height:40px;margin:34px 0;display:block}
   .al-item .al-name{padding:8px 10px;font-size:12px;color:#c9ccd3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .al-item .al-src{display:block;margin:-4px 10px 8px;font-size:10.5px;color:#6f747d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .al-item .al-badge{position:absolute;right:8px;top:8px;padding:1px 7px;border-radius:999px;background:rgba(10,12,16,.8);color:#9fe6ff;font-size:10.5px}
   .al-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#6d707a;font-size:12.5px}
   .al-empty .al-empty-icon{font-size:34px;opacity:.5}
@@ -859,7 +866,7 @@
   .pm-extra:hover{background:#282a31;color:#fff}
   .pm-body{flex:1;overflow:auto;padding:4px 18px 20px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
     gap:14px;align-content:start;scrollbar-width:thin}
-  .pm-card{background:none;border:0;padding:0;text-align:left;cursor:pointer;min-width:0}
+  .pm-card{position:relative;background:none;border:0;padding:0;text-align:left;cursor:pointer;min-width:0}
   .pm-thumb{position:relative;display:block;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;
     border:1px solid #2c2e34;background:#101216;transition:border-color .15s,box-shadow .15s,transform .15s}
   .pm-card:hover .pm-thumb{transform:translateY(-1px);border-color:#4a4d55}
@@ -873,6 +880,13 @@
   .pm-colors{display:flex;height:100%}
   .pm-colors i{flex:1;display:block}
   .pm-cover{width:100%;height:100%;object-fit:cover;display:block}
+  .pm-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .pm-bg-btn,.pm-bg-clear{position:absolute;top:6px;width:22px;height:22px;padding:0;border-radius:6px;
+    border:1px solid rgba(255,255,255,.2);background:rgba(10,12,16,.78);color:#d6dae2;font-size:12px;
+    line-height:20px;cursor:pointer;opacity:0;transition:opacity .12s;z-index:3}
+  .pm-bg-btn{left:6px}
+  .pm-bg-clear{left:32px;color:#ff9aa3}
+  .pm-card:hover .pm-bg-btn,.pm-card:hover .pm-bg-clear,.pm-card:focus-within .pm-bg-btn,.pm-card:focus-within .pm-bg-clear{opacity:1}
   .pm-rhythm{position:absolute;left:12%;right:12%;top:26%;bottom:26%;display:flex;gap:5px;align-items:stretch}
   .pm-rhythm i{flex:1;border-radius:3px;background:linear-gradient(180deg,#5fe0ff,#2c6f86);opacity:.92}
   .pm-empty{grid-column:1/-1;padding:56px 0 40px;text-align:center;color:#6d707a;font-size:13px;line-height:1.8}
@@ -1116,12 +1130,12 @@
 <div id="audioOutput"></div>
 
 <div id="assetLibrary" class="al" hidden>
-  <div class="al-box" role="dialog" aria-modal="true" aria-label="全局素材库">
-    <div class="al-head"><span>全局素材库</span><button class="al-close" type="button" id="alClose" aria-label="关闭">×</button></div>
+  <div class="al-box" role="dialog" aria-modal="true" aria-label="素材与生成历史">
+    <div class="al-head"><span id="alTitle">全局素材库</span><button class="al-close" type="button" id="alClose" aria-label="关闭">×</button></div>
     <div class="al-body">
       <aside class="al-side">
-        <button type="button" class="on" data-scope="all">▦ 全部素材<span class="al-count" id="alAllCount">0</span></button>
-        <div class="al-side-title"><span>文件夹</span><span id="alFolderCount">0</span></div>
+        <div id="alScopes"></div>
+        <div class="al-side-title" id="alFolderTitle"><span>文件夹</span><span id="alFolderCount">0</span></div>
         <div id="alFolders"></div>
         <button type="button" class="al-new-folder" id="alNewFolder">＋ 新建文件夹</button>
       </aside>
@@ -1131,7 +1145,9 @@
           <button class="al-more" id="alFolderMore" type="button" hidden title="文件夹操作">⋯</button>
           <input id="alSearch" type="text" placeholder="搜索全部素材" autocomplete="off" />
           <button id="alUpload" type="button">⬆ 本地上传</button>
+          <button id="alRefresh" type="button" class="al-more" title="刷新列表">↻</button>
         </div>
+        <div class="al-scope" id="alScope"></div>
         <div class="al-tabs" id="alTabs"></div>
         <div class="al-grid" id="alGrid"></div>
         <div class="al-empty" id="alEmpty"><span class="al-empty-icon">▤</span><span>暂无素材</span></div>
@@ -1291,7 +1307,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.21
+   AI漫剧节点工作台 v4.22
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1389,6 +1405,7 @@ var NODETYPES={
       if(p.style&&p.style!=="auto")parts.push("风格："+presetPromptText("style",p.style));
       if(p.composition&&p.composition!=="auto")parts.push("构图："+presetPromptText("composition",p.composition));
       if(p.rhythm&&p.rhythm!=="auto")parts.push("节奏："+presetPromptText("rhythm",p.rhythm));
+      if(p.camera&&p.camera!=="auto")parts.push("相机："+p.camera);
       return parts.join("；");}},
   audio:{label:"音频生成",icon:"🎧",color:"#10b981",kind:"audio",inKinds:["text"],
     fields:[{k:"text",l:"描述 / 文本",t:"textarea",ph:"描述你想要的声音",def:""},
@@ -3253,6 +3270,7 @@ function openInspector(n){
     if(n.params.count===undefined)n.params.count=1;
     if(n.params.watermark===undefined)n.params.watermark=false;
     if(n.params.sourceImage===undefined)n.params.sourceImage="";
+    if(n.params.camera===undefined)n.params.camera="auto";
   }
   if(n.type==="image"){
     var imageDefaults={ratio:"16:9",style:"auto",palette:"auto",composition:"auto",camera:"auto",quality:"standard",resolution:"2K",background:"auto",count:1,sourceImage:""};
@@ -3296,6 +3314,16 @@ function openInspector(n){
       open.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();openPresetPicker(spec[0],n);});
       item.appendChild(open);vquick.appendChild(item);
     });
+    var vcamItem=el("label","ie-image-quick-item"),vcamIcon=el("span","ie-image-quick-icon");vcamIcon.textContent="◎";vcamItem.appendChild(vcamIcon);
+    var videoCameraOptions=[["auto","相机"],["人像镜头","人像镜头"],["广角镜头","广角镜头"],["俯拍","俯拍"],["仰拍","仰拍"],["浅景深","浅景深"],["跟拍","跟拍"],["航拍","航拍"]];
+    var vcamSelect=el("select");vcamSelect.setAttribute("aria-label","相机");
+    videoCameraOptions.forEach(function(pair){
+      var option=el("option");option.value=pair[0];option.textContent=pair[1];
+      if(String(n.params.camera||"auto")===String(pair[0]))option.selected=true;
+      vcamSelect.appendChild(option);
+    });
+    vcamSelect.addEventListener("change",function(){n.params.camera=vcamSelect.value;saveSoon();refreshPreview(n);});
+    vcamItem.appendChild(vcamSelect);vquick.appendChild(vcamItem);
     insBody.appendChild(vquick);
   }
 
@@ -4232,7 +4260,7 @@ function handleBarAction(act,btn){
   else if(act==="snap")toggleSnap(btn);
   else if(act==="hidewires")toggleWires(btn);
   else if(act==="panmode"){uiFlags.hand=!uiFlags.hand;vp.classList.toggle("hand-mode",uiFlags.hand);btn.classList.toggle("on",uiFlags.hand);toast(uiFlags.hand?"移动模式：可拖拽任意位置平移":"已退出移动模式");}
-  else if(act==="history")openHistory();
+  else if(act==="history")openHistoryLibrary();
   else if(act==="help"){openHelp();closeFloatingPanels();}
   else if(act==="export"){exportFlow();closeFloatingPanels();}
   else if(act==="import"){document.getElementById("filejson").click();closeFloatingPanels();}
@@ -4727,7 +4755,7 @@ var RHYTHM_PRESETS=[
   {id:"crosscut",name:"交叉剪辑",bars:[2,1,2,1,2],prompt:"交叉剪辑，两条线索交错推进并汇总"}
 ];
 var PRESET_KEY="ic-presets-v1";
-var presetStore={compositions:[],palettes:[],rhythms:[]};
+var presetStore={compositions:[],palettes:[],rhythms:[],backgrounds:{}};
 function loadPresetStore(){
   try{
     var raw=localStorage.getItem(PRESET_KEY);if(!raw)return;
@@ -4735,6 +4763,7 @@ function loadPresetStore(){
     if(Array.isArray(data.compositions))presetStore.compositions=data.compositions.filter(function(item){return item&&item.id&&item.image;});
     if(Array.isArray(data.palettes))presetStore.palettes=data.palettes.filter(function(item){return item&&item.id&&Array.isArray(item.colors)&&item.colors.length;});
     if(Array.isArray(data.rhythms))presetStore.rhythms=data.rhythms.filter(function(item){return item&&item.id&&item.name;});
+    if(data.backgrounds&&typeof data.backgrounds==="object")presetStore.backgrounds=data.backgrounds;
   }catch(_){}
 }
 function savePresetStore(){
@@ -4838,10 +4867,21 @@ function renderPresetModal(){
     return;
   }
   items.forEach(function(item){
-    var card=el("button","pm-card"+(item.id===presetState.selectedId?" on":""));
-    card.type="button";
+    var card=el("div","pm-card"+(item.id===presetState.selectedId?" on":""));
+    card.tabIndex=0;
     var thumb=el("span","pm-thumb");
-    if(kind==="style"){
+    var background=presetBackground(kind,item.id);
+    if(background){
+      thumb.classList.add("has-bg");
+      if(background.kind==="video"){
+        var bgVideo=el("video","pm-bg");bgVideo.src=safeMediaUrl(background.url);
+        bgVideo.muted=true;bgVideo.loop=true;bgVideo.autoplay=true;bgVideo.setAttribute("playsinline","");
+        thumb.appendChild(bgVideo);
+      }else{
+        var bgImage=el("img","pm-bg");bgImage.src=safeMediaUrl(background.url);bgImage.alt="";
+        thumb.appendChild(bgImage);
+      }
+    }else if(kind==="style"){
       thumb.style.background="linear-gradient(135deg,"+item.colors[0]+","+item.colors[1]+")";
     }else if(kind==="composition"){
       thumb.style.background=item.image?"#0b0d11":"linear-gradient(180deg,#151a22,#0b0d11)";
@@ -4860,6 +4900,18 @@ function renderPresetModal(){
       thumb.appendChild(strip);
     }
     thumb.insertAdjacentHTML("beforeend",'<span class="pm-star">★</span>');
+    var bgButton=el("button","pm-bg-btn");bgButton.type="button";
+    bgButton.title=background?"更换背景":"上传背景（本地图片/视频）";
+    bgButton.textContent=background?"⇄":"⬆";
+    bgButton.addEventListener("click",function(event){event.preventDefault();event.stopPropagation();uploadPresetBackground(kind,item.id);});
+    bgButton.addEventListener("pointerdown",function(event){event.stopPropagation();});
+    card.appendChild(bgButton);
+    if(background){
+      var bgClear=el("button","pm-bg-clear");bgClear.type="button";bgClear.title="移除背景";bgClear.textContent="×";
+      bgClear.addEventListener("click",function(event){event.preventDefault();event.stopPropagation();clearPresetBackground(kind,item.id);});
+      bgClear.addEventListener("pointerdown",function(event){event.stopPropagation();});
+      card.appendChild(bgClear);
+    }
     var name=el("span","pm-name");name.textContent=item.name;
     card.appendChild(thumb);card.appendChild(name);
     card.addEventListener("click",function(){
@@ -4972,6 +5024,69 @@ function importComposition(){
   };
   input.click();
 }
+function presetBgKey(kind,id){return kind+":"+id;}
+function presetBackground(kind,id){return (presetStore.backgrounds||{})[presetBgKey(kind,id)]||null;}
+function presetBgAccepts(kind){
+  if(kind==="style")return "image/video";
+  if(kind==="rhythm")return "video";
+  return "image";
+}
+function compressImageFile(file){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(){
+      var src=String(reader.result||"");
+      if(/^data:image\/gif/i.test(src)&&file.size<1500000){resolve(src);return;}
+      var image=new Image();
+      image.onload=function(){
+        var scale=Math.min(1,720/Math.max(1,image.width));
+        var canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(image.width*scale));
+        canvas.height=Math.max(1,Math.round(image.height*scale));
+        canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL("image/jpeg",.82));
+      };
+      image.onerror=function(){reject(new Error("这张图片无法读取"));};
+      image.src=src;
+    };
+    reader.onerror=function(){reject(new Error("文件读取失败"));};
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadPresetBackground(kind,id){
+  var accepts=presetBgAccepts(kind);
+  var input=document.createElement("input");input.type="file";
+  input.accept=accepts==="image/video"?"image/*,video/*":accepts==="video"?"video/*":"image/*";
+  input.onchange=async function(){
+    var file=input.files&&input.files[0];if(!file)return;
+    var isVideo=/^video\//i.test(file.type);
+    if(isVideo&&accepts==="image"){toast("该预设的背景只支持图片");return;}
+    if(!isVideo&&accepts==="video"){toast("节奏背景只支持视频");return;}
+    presetStore.backgrounds=presetStore.backgrounds||{};
+    try{
+      if(isVideo){
+        if(isDesktopEnv()){
+          var url=await uploadMediaFile(file,{mime:file.type,kind:"video"});
+          presetStore.backgrounds[presetBgKey(kind,id)]={kind:"video",url:url,name:file.name};
+          savePresetStore();
+        }else{
+          presetStore.backgrounds[presetBgKey(kind,id)]={kind:"video",url:URL.createObjectURL(file),name:file.name,session:true};
+          toast("网页版的视频背景只在本次会话有效");
+        }
+      }else{
+        var data=await compressImageFile(file);
+        presetStore.backgrounds[presetBgKey(kind,id)]={kind:"image",url:data,name:file.name};
+        if(!savePresetStore())delete presetStore.backgrounds[presetBgKey(kind,id)];
+      }
+    }catch(error){toast(error.message||"背景上传失败");return;}
+    renderPresetModal();toast("背景已更新");
+  };
+  input.click();
+}
+function clearPresetBackground(kind,id){
+  if(presetStore.backgrounds)delete presetStore.backgrounds[presetBgKey(kind,id)];
+  savePresetStore();renderPresetModal();
+}
 function applyPresetSelection(){
   var node=presetState.node;
   var list=presetState.tab==="mine"?minePresets(presetState.kind):officialPresets(presetState.kind);
@@ -5006,7 +5121,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.9";
+var APP_VERSION="1.2.10";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5205,10 +5320,26 @@ async function persistHistoryToDisk(entry){
   if(!storageConfig.available)return;
   try{await fetch("/infinite-canvas/storage/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"history",canvas:activeCanvasName(),entry:entry})});}catch(_){}
 }
+function revealStoredFile(path){
+  if(!path)return;
+  if(!isDesktopEnv()){toast("仅桌面版支持打开文件位置");return;}
+  fetch("/infinite-canvas/storage/reveal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:path})})
+    .then(function(response){if(!response.ok)throw new Error("无法打开文件位置");toast("已在资源管理器中打开");})
+    .catch(function(error){toast(error.message||"打开失败");});
+}
+function copyTextToClipboard(text){
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){toast("已复制文件路径");},function(){toast("复制失败");});
+      return;
+    }
+  }catch(_){}
+  toast("当前环境不支持复制");
+}
 /* ---- 全局素材库（v4.14） ---- */
 var ASSET_FOLDER_KEY="ic-asset-folders-v1";
 var assetStore={folders:[],map:{}};
-var assetState={scope:"all",tab:"all",query:""};
+var assetState={mode:"library",project:"all",scope:"all",tab:"all",query:""};
 var assetLibraryEl=document.getElementById("assetLibrary");
 var alGrid=document.getElementById("alGrid");
 var alTabs=document.getElementById("alTabs");
@@ -5237,7 +5368,10 @@ function assetItems(){
       items.push({
         nodeId:n.id,canvasId:canvas.id,canvasName:canvas.name,
         title:n.title||(NODETYPES[n.type]||{}).label||"素材",
-        kind:kind,url:url,folderId:assetStore.map[n.id]||""
+        kind:kind,url:url,folderId:assetStore.map[n.id]||"",
+        generated:n.type!=="upload",
+        savedPath:n.savedPath||"",
+        note:(output.note||"")
       });
     });
   });
@@ -5246,7 +5380,11 @@ function assetItems(){
 function assetFiltered(items){
   var q=assetState.query.trim().toLowerCase();
   return items.filter(function(item){
-    if(assetState.scope!=="all"&&item.folderId!==assetState.scope)return false;
+    if(assetState.project==="current"&&item.canvasId!==canvasBook.current)return false;
+    if(assetState.mode==="history"){
+      if(assetState.scope==="generated"&&!item.generated)return false;
+      if(assetState.scope==="uploaded"&&item.generated)return false;
+    }else if(assetState.scope!=="all"&&item.folderId!==assetState.scope)return false;
     if(assetState.tab!=="all"&&item.kind!==assetState.tab)return false;
     if(q&&String(item.title).toLowerCase().indexOf(q)<0)return false;
     return true;
@@ -5298,35 +5436,77 @@ function openFolderMenu(x,y,folder){
   alMenu.style.top=Math.max(8,Math.min(y,innerHeight-160))+"px";
 }
 function renderAssetLibrary(){
+  var history=assetState.mode==="history";
   var items=assetItems(),visible=assetFiltered(items);
-  document.getElementById("alAllCount").textContent=items.length;
-  document.getElementById("alFolderCount").textContent=assetStore.folders.length;
-  var folderBox=document.getElementById("alFolders");folderBox.innerHTML="";
-  assetStore.folders.forEach(function(folder){
-    var button=el("button");button.type="button";button.dataset.scope=folder.id;
-    if(assetState.scope===folder.id)button.classList.add("on");
-    button.innerHTML='<span>▤</span><span>'+esc(folder.name)+'</span><span class="al-count">'+items.filter(function(item){return item.folderId===folder.id;}).length+'</span>';
-    button.addEventListener("click",function(){assetState.scope=folder.id;renderAssetLibrary();});
-    button.addEventListener("contextmenu",function(event){event.preventDefault();openFolderMenu(event.clientX,event.clientY,folder);});
-    folderBox.appendChild(button);
+  var box=document.querySelector(".al-box");
+  if(box)box.classList.toggle("history-mode",history);
+  var titleEl=document.getElementById("alTitle");
+  if(titleEl)titleEl.textContent=history?"生成历史":"全局素材库";
+
+  var generatedCount=items.filter(function(item){return item.generated;}).length;
+  if(history&&assetState.scope!=="uploaded"&&assetState.scope!=="generated")assetState.scope="generated";
+  if(!history&&assetState.scope!=="all"&&!assetStore.folders.some(function(f){return f.id===assetState.scope;}))assetState.scope="all";
+
+  var scopesEl=document.getElementById("alScopes");
+  scopesEl.innerHTML="";
+  var groups=history
+    ?[["generated","◷ 生成历史",generatedCount],["uploaded","▤ 我上传的",items.length-generatedCount]]
+    :[["all","▦ 全部素材",items.length]];
+  groups.forEach(function(group){
+    var button=el("button",assetState.scope===group[0]?"on":"");button.type="button";
+    button.innerHTML='<span>'+esc(group[1])+'</span><span class="al-count">'+group[2]+'</span>';
+    button.addEventListener("click",function(){assetState.scope=group[0];renderAssetLibrary();});
+    scopesEl.appendChild(button);
   });
-  document.querySelectorAll(".al-side button[data-scope]").forEach(function(button){
-    if(button.dataset.scope==="all")button.classList.toggle("on",assetState.scope==="all");
+
+  var folderBox=document.getElementById("alFolders");
+  folderBox.innerHTML="";
+  if(!history){
+    assetStore.folders.forEach(function(folder){
+      var button=el("button",assetState.scope===folder.id?"on":"");button.type="button";
+      button.innerHTML='<span>▤</span><span>'+esc(folder.name)+'</span><span class="al-count">'+items.filter(function(item){return item.folderId===folder.id;}).length+'</span>';
+      button.addEventListener("click",function(){assetState.scope=folder.id;renderAssetLibrary();});
+      button.addEventListener("contextmenu",function(event){event.preventDefault();openFolderMenu(event.clientX,event.clientY,folder);});
+      folderBox.appendChild(button);
+    });
+    document.getElementById("alFolderCount").textContent=assetStore.folders.length;
+  }
+
+  var scopeEl=document.getElementById("alScope");
+  scopeEl.innerHTML="";
+  [["current","本项目"],["all","全部项目"]].forEach(function(pair){
+    var button=el("button",assetState.project===pair[0]?"on":"");button.type="button";button.textContent=pair[1];
+    button.addEventListener("click",function(){assetState.project=pair[0];renderAssetLibrary();});
+    scopeEl.appendChild(button);
   });
+
+  var scopedItems=items.filter(function(item){
+    if(assetState.project==="current"&&item.canvasId!==canvasBook.current)return false;
+    if(history){
+      if(assetState.scope==="generated"&&!item.generated)return false;
+      if(assetState.scope==="uploaded"&&item.generated)return false;
+    }else if(assetState.scope!=="all"&&item.folderId!==assetState.scope)return false;
+    return true;
+  });
+
   var current=assetStore.folders.filter(function(folder){return folder.id===assetState.scope;})[0];
-  var scopeName=assetState.scope==="all"?"全部素材":(current?current.name:"素材");
-  document.getElementById("alCrumb").textContent="素材库 / "+scopeName;
+  var scopeName=history?(assetState.scope==="uploaded"?"我上传的":"生成历史"):(assetState.scope==="all"?"全部素材":(current?current.name:"素材"));
+  var record=currentCanvasRecord();
+  var projectName=(assetState.project==="current"&&record)?record.name:"全部项目";
+  document.getElementById("alCrumb").textContent=(history?"生成历史":"素材库")+" / "+projectName+" / "+scopeName;
   document.getElementById("alSearch").placeholder="搜索"+scopeName;
-  document.getElementById("alFolderMore").hidden=assetState.scope==="all";
+  document.getElementById("alFolderMore").hidden=history||assetState.scope==="all";
+
   var tabs=[["all","全部"],["image","图片"],["video","视频"],["audio","音频"],["other","其他"]];
   alTabs.innerHTML="";
   tabs.forEach(function(pair){
-    var count=pair[0]==="all"?items.length:items.filter(function(item){return item.kind===pair[0];}).length;
+    var count=pair[0]==="all"?scopedItems.length:scopedItems.filter(function(item){return item.kind===pair[0];}).length;
     var button=el("button",assetState.tab===pair[0]?"on":"");button.type="button";
     button.textContent=pair[1]+" "+count;
     button.addEventListener("click",function(){assetState.tab=pair[0];renderAssetLibrary();});
     alTabs.appendChild(button);
   });
+
   alGrid.innerHTML="";
   document.getElementById("alEmpty").style.display=visible.length?"none":"flex";
   visible.forEach(function(item){
@@ -5336,7 +5516,9 @@ function renderAssetLibrary(){
       :item.kind==="video"?'<video src="'+url+'" muted></video>'
       :'<audio src="'+url+'" controls></audio>';
     var label=item.kind==="image"?"图片":item.kind==="video"?"视频":"音频";
-    card.innerHTML=media+'<span class="al-badge">'+label+'</span><div class="al-name">'+esc(item.title)+'</div>';
+    card.innerHTML=media+'<span class="al-badge">'+label+'</span><div class="al-name">'+esc(item.title)+'</div>'+
+      (assetState.project==="all"?'<span class="al-src">'+esc(item.canvasName||"")+'</span>':'');
+    if(item.savedPath)card.title=item.savedPath;
     card.addEventListener("click",function(event){openAssetItemMenu(event.clientX,event.clientY,item);});
     card.addEventListener("contextmenu",function(event){event.preventDefault();openAssetItemMenu(event.clientX,event.clientY,item);});
     alGrid.appendChild(card);
@@ -5363,6 +5545,18 @@ function openAssetItemMenu(x,y,item){
     button.addEventListener("click",function(){alMenu.classList.remove("on");handler();});
     alMenu.appendChild(button);
   }
+  add("定位到节点",function(){
+    closeAssetLibrary();
+    if(item.canvasId!==canvasBook.current)switchCanvas(item.canvasId);
+    var node=nodeById(item.nodeId);
+    if(!node){toast("这个节点已经不在了");return;}
+    select(node.id);
+    state.view.x=innerWidth/2-(node.x+(node.w||240)/2)*state.view.s;
+    state.view.y=innerHeight/2-(node.y+(node.h||200)/2)*state.view.s;
+    applyView();saveSoon();
+  });
+  if(item.savedPath)add("打开文件位置",function(){revealStoredFile(item.savedPath);});
+  if(item.savedPath)add("复制文件路径",function(){copyTextToClipboard(item.savedPath);});
   assetStore.folders.forEach(function(folder){
     if(folder.id===item.folderId)return;
     add("→ 移动到「"+folder.name+"」",function(){
@@ -5386,7 +5580,13 @@ function openAssetItemMenu(x,y,item){
   alMenu.style.top=Math.max(8,Math.min(y,innerHeight-200))+"px";
 }
 function openAssetLibrary(){
-  assetState={scope:"all",tab:"all",query:""};
+  assetState={mode:"library",project:"all",scope:"all",tab:"all",query:""};
+  document.getElementById("alSearch").value="";
+  assetLibraryEl.hidden=false;
+  renderAssetLibrary();
+}
+function openHistoryLibrary(){
+  assetState={mode:"history",project:"all",scope:"generated",tab:"all",query:""};
   document.getElementById("alSearch").value="";
   assetLibraryEl.hidden=false;
   renderAssetLibrary();
@@ -5749,7 +5949,7 @@ function openHelp(){
     '<h3>生成与配置</h3><ul>'+
     '<li>在左上角「设置 → API 接入」配置服务商与默认线路；没有 Key 时可先用「本地模拟」跑通流程。</li>'+
     '<li>节点运行中会显示进度条与百分比，同一节点同时只会发起一次生成。</li>'+
-    '<li>「生成历史」记录最近 60 次运行，点击可回到对应节点。</li></ul>'+
+    '<li>「生成历史」打开的是媒体库：按 本项目 / 全部项目 和 图像 / 视频 / 音频 分类浏览真实生成结果，点素材可定位节点、打开文件位置或复制路径。</li></ul>'+
     '<h3>数据</h3><ul>'+
     '<li>画布保存在本机（浏览器 localStorage 或桌面端应用数据），不上传服务器；Key 不随工作流导出。</li>'+
     '<li>桌面版会把生成的图片、视频按画布名存到本机磁盘（默认「作品素材」目录），生成历史以 JSONL 追加保存，路径可在「设置 → 本地存储」修改。</li>'+
@@ -5789,7 +5989,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.9";
+var canvasApiVersion="1.2.10";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

@@ -98,6 +98,13 @@ infiniteCanvas.fitCanvas();
 - 「我的节奏」支持新建节奏（名称 + 描述 + 分段权重）和导入 JSON 节奏包
 - 图生视频的提示词会自动拼接所选风格、构图、节奏的描述
 
+## v4.19 新增（桌面版 1.2.7）
+- 音频 API 接入新增统一的 OpenAI 兼容入口，预置 Seed Audio 1.0、Minimax-speech-2.8-hd、Minimax-speech-2.8-turbo 与 Eleven V3
+- 新增 Seed Audio 1.0、MiniMax T2A V2、ElevenLabs Eleven V3 三个官方专用适配器，可分别填写 Base URL、Key、GroupId 或 Voice ID
+- 音频节点支持厂商专用模型、Voice / Speaker ID、语言与适配后的采样率、输出格式；桌面版可读取上游模型并显示内置推荐模型
+- 桌面版新增受限音频接口转发，Seed Audio 的 Base64、MiniMax 的十六进制音频和 ElevenLabs 的二进制音频都会保存到本地素材目录并可直接播放
+- 音频节点默认宽度扩展到 420px，旧音频节点自动迁移，避免播放器压缩和内容重叠
+
 ## v4.17 新增（桌面版 1.2.5）
 - 框选多个节点后显示整体虚线框，右侧出现一个白色 + 手柄；从该手柄拖到目标节点，会把框内所有节点一起连接过去
 - 节点左右两侧的连接加号默认隐藏，悬停、选中或鼠标靠近节点时显示；加号改为白色，悬停反色

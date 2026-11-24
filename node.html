@@ -922,7 +922,7 @@
   #inspector .ie-audio-field{display:flex;flex-direction:column;gap:4px;min-width:0}
   #inspector .ie-audio-field.disabled{opacity:.45}
   #inspector .ie-audio-label{font-size:11px;color:#7b7f88}
-  #inspector .ie-audio-field select{height:30px;border:1px solid #303238;border-radius:8px;background:#1b1c21;color:#e6e7ea;font-size:12px;padding:0 6px}
+  #inspector .ie-audio-field select,#inspector .ie-audio-field input{height:30px;border:1px solid #303238;border-radius:8px;background:#1b1c21;color:#e6e7ea;font-size:12px;padding:0 8px}
   #inspector .ie-audio-chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
   #inspector .ie-audio-chip{height:28px;padding:0 10px;border:1px solid #303238;border-radius:999px;background:#1b1c21;
     color:#c3c7cf;font-size:11.5px;cursor:pointer}
@@ -1244,7 +1244,7 @@ var imageSettingsPopover=null,imageSettingsAnchor=null,imageSettingsNode=null,im
 function id(p){return (p||"n")+Date.now().toString(36)+(uid++).toString(36);}
 function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-function safeMediaUrl(s){s=String(s||"").trim();return /^(https?:|blob:|data:(?:image|video)\/|media\/[0-9a-f-]{36}\.(?:jpg|png|webp|gif|avif|mp4|webm|mov|ogv)$)/i.test(s)?s:"";}
+function safeMediaUrl(s){s=String(s||"").trim();return /^(https?:|blob:|data:(?:image|video|audio)\/|media\/[0-9a-f-]{36}\.(?:jpg|png|webp|gif|avif|mp4|webm|mov|ogv|mp3|wav|ogg|m4a|flac|pcm)$)/i.test(s)?s:"";}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 function toast(m){toastEl.textContent=m;toastEl.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove("on");},1900);}
 
@@ -1320,9 +1320,7 @@ var NODETYPES={
       if(p.mode==="music")return "创作背景音乐："+(text||"轻柔氛围铺底")+"；风格："+({auto:"自动",pop:"流行",guofeng:"古风",electronic:"电子",orchestral:"管弦",rock:"摇滚"}[p.musicStyle]||"自动")+"；形态："+(p.inputForm==="vocal"?"带人声":"纯乐器");
       if(p.mode==="sfx")return "生成音效："+(text||"环境音效")+"；要求短促自然、可循环";
       if(p.mode==="timbre")return "生成音色试听："+(text||"温暖自然的青年女声");
-      return (text||"")+"；音色："+({auto:"自动",male:"男声沉稳",female:"女声清亮",youth:"少年",mature:"御姐"}[p.voice]||"自动")+
-        "；表现力："+({natural:"自然",passion:"激情",gentle:"温柔",serious:"严肃"}[p.expression]||"自然")+
-        "；语言："+({zh:"中文",en:"英文",ja:"日文"}[p.language]||"中文");
+      return text||"";
     }},
   compose:{label:"合成导出",icon:"🎬",color:"#475569",kind:"any",inKinds:["video","audio","image"],
     fields:[{k:"note",l:"备注",t:"text",def:""}],
@@ -1375,6 +1373,112 @@ function makeHttp(spec){
     return out;
   };
   return p;
+}
+
+function providerProxyUrl(url){
+  if(!isDesktopProxyLocation())return String(url||"");
+  return "/infinite-canvas/provider-proxy?url="+encodeURIComponent(String(url||""));
+}
+async function providerFetch(url,options){
+  return fetch(providerProxyUrl(url),options||{});
+}
+function miniUUID(){
+  if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(char){var value=Math.random()*16|0;return (char==="x"?value:(value&3|8)).toString(16);});
+}
+function audioMimeForFormat(format){
+  var key=String(format||"mp3").toLowerCase();
+  if(key==="wav")return "audio/wav";
+  if(key==="ogg"||key==="ogg_opus"||key==="opus")return "audio/ogg";
+  if(key==="pcm")return "audio/L16";
+  if(key==="flac")return "audio/flac";
+  if(key==="m4a")return "audio/mp4";
+  return "audio/mpeg";
+}
+function audioExtensionForFormat(format,mime){
+  var key=String(format||"").toLowerCase().replace(/^audio\//,"");
+  if(key==="ogg_opus"||key==="opus")return "ogg";
+  if(key==="mpeg"||key==="mp3")return "mp3";
+  if(key==="l16")return "pcm";
+  if(["wav","pcm","flac","m4a","ogg"].indexOf(key)>=0)return key;
+  if(/wav/i.test(mime||""))return "wav";
+  if(/ogg/i.test(mime||""))return "ogg";
+  return "mp3";
+}
+function base64ToBlob(value,mime){
+  var binary=atob(String(value||"").replace(/^data:[^,]*,/,"").replace(/\s+/g,"")),bytes=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+}
+function hexToBlob(value,mime){
+  var hex=String(value||"").replace(/\s+/g,"");
+  if(!hex||hex.length%2)throw new Error("音频接口返回了无效的十六进制数据");
+  var bytes=new Uint8Array(hex.length/2);
+  for(var i=0;i<bytes.length;i++)bytes[i]=parseInt(hex.slice(i*2,i*2+2),16);
+  return new Blob([bytes],{type:mime});
+}
+async function storeGeneratedAudio(blob,format,note){
+  var mime=blob.type&&/^audio\//i.test(blob.type)?blob.type:audioMimeForFormat(format);
+  blob=blob.type===mime?blob:new Blob([blob],{type:mime});
+  var extension=audioExtensionForFormat(format,mime),filename="audio-"+Date.now()+"."+extension;
+  if(isDesktopProxyLocation()){
+    var file=new File([blob],filename,{type:mime});
+    var url=await uploadMediaFile(file,{mime:mime,kind:"audio"});
+    return {kind:"audio",url:url,format:extension,note:note||"音频已保存到本地素材目录"};
+  }
+  var dataUrl=await fileToDataUrl(blob);
+  return {kind:"audio",url:dataUrl,b64:"",format:extension,note:(note||"音频生成完成")+" · 网页预览"};
+}
+function audioFromBase64(value,format,note){
+  var text=String(value||"").trim();if(!text)return null;
+  if(/^data:audio\//i.test(text))return {kind:"audio",url:text,format:audioExtensionForFormat(format,""),note:note};
+  if(/^[0-9a-f]+$/i.test(text)&&text.length%2===0)return storeGeneratedAudio(hexToBlob(text,audioMimeForFormat(format)),format,note);
+  return storeGeneratedAudio(base64ToBlob(text,audioMimeForFormat(format)),format,note);
+}
+function findAudioPayload(value,depth){
+  if(!value||depth>5||typeof value!=="object")return {};
+  if(typeof value.audio==="string"||typeof value.audio_base64==="string"||typeof value.url==="string"||typeof value.audio_url==="string")return value;
+  var keys=["data","result","output","audio","task","response"];
+  for(var i=0;i<keys.length;i++){
+    if(value[keys[i]]&&typeof value[keys[i]]==="object"){
+      var found=findAudioPayload(value[keys[i]],depth+1);
+      if(found.audio||found.audio_base64||found.url||found.audio_url)return found;
+    }
+  }
+  return {};
+}
+function audioErrorFromPayload(payload){
+  if(!payload||typeof payload!=="object")return "";
+  if(payload.base_resp&&Number(payload.base_resp.status_code)!==0)return payload.base_resp.status_msg||"音频服务返回错误";
+  if(payload.error&&(payload.error.message||payload.error.code))return payload.error.message||String(payload.error.code);
+  if(payload.code!==undefined&&Number(payload.code)!==0&&Number(payload.code)!==200)return payload.message||("错误码 "+payload.code);
+  if(payload.status==="failed"||payload.status==="error")return payload.message||"音频生成失败";
+  return "";
+}
+async function parseAudioHttpResponse(response,format,note){
+  var contentType=String(response.headers.get("content-type")||"").toLowerCase();
+  if(!response.ok){
+    var raw=await response.text(),detail=raw.slice(0,600),parsed=null;
+    try{parsed=JSON.parse(raw);detail=audioErrorFromPayload(parsed)||detail;}catch(_){}
+    throw new Error("HTTP "+response.status+"："+detail);
+  }
+  if(contentType.indexOf("json")>=0){
+    var payload=await response.json(),error=audioErrorFromPayload(payload);
+    if(error)throw new Error(error);
+    var audio=findAudioPayload(payload,0);
+    if(audio.url||audio.audio_url)return {kind:"audio",url:String(audio.url||audio.audio_url),format:audioExtensionForFormat(format,""),note:note};
+    var encoded=audio.audio_base64||audio.audio;
+    if(!encoded)throw new Error("音频接口响应中没有音频数据");
+    return audioFromBase64(encoded,format,note);
+  }
+  var blob=await response.blob();
+  if(!blob.size)throw new Error("音频接口返回了空文件");
+  return storeGeneratedAudio(blob,format,note);
+}
+function sampleRateNumber(value){
+  var key=String(value||"24k").toLowerCase().replace(/hz/g,"");
+  if(key.indexOf("k")>=0)return Math.round(parseFloat(key)*1000)||24000;
+  return Number(key)||24000;
 }
 
 
@@ -1452,6 +1556,11 @@ function extractProviderModels(payload){
 }
 function modelsForSlot(pid,slot){
   var cfg=state.settings.providers[pid]||{},all=Array.isArray(cfg.discoveredModels)?cfg.discoveredModels.slice():[];
+  var provider=PROVIDERS[pid]||{},builtIn=Array.isArray(provider.models&&provider.models[slot.kind])?provider.models[slot.kind]:[];
+  builtIn.forEach(function(model){
+    var row=typeof model==="string"?{id:model,label:model}:Object.assign({},model||{});
+    if(row.id&&!all.some(function(item){return item.id===row.id;}))all.push({id:row.id,label:row.label||row.id,domain:"内置模型",kinds:[slot.kind],builtIn:true});
+  });
   var usable=all.filter(function(model){return !model.kinds||!model.kinds.length||model.kinds.indexOf(slot.kind)>=0;});
   var defaults=PROVIDERS[pid]&&PROVIDERS[pid].defaults||{};
   var selected=String(cfg[slot.key]||defaults[slot.key]||"").trim();
@@ -1463,27 +1572,26 @@ function modelChoicesForNode(pid,kind){
   return slot?modelsForSlot(pid,slot):[];
 }
 function audioModelChoicesFor(pid){
-  var cfg=(state.settings.providers||{})[pid]||{};
-  var models=Array.isArray(cfg.discoveredModels)?cfg.discoveredModels:[];
-  return models.filter(function(model){
-    return model&&model.kinds&&model.kinds.indexOf("audio")>=0;
-  }).map(function(model){return {id:model.id,label:model.label||model.id,domain:model.domain};});
+  var p=PROVIDERS[pid],slot=p&&p.modelSlots&&p.modelSlots.filter(function(item){return item.kind==="audio";})[0];
+  return slot?modelsForSlot(pid,slot).map(function(model){return {id:model.id,label:model.label||model.id,domain:model.domain};}):[];
 }
 async function requestProviderModelList(pid,cfg,signal){
   var p=PROVIDERS[pid],base=String(cfg.baseUrl||(p.defaults&&p.defaults.baseUrl)||"").trim().replace(/\/+$/,""),path=p.testPath||"/v1/models";
   if(!base)throw new Error("请先填写 Base URL");
   var apiKey=String(cfg.apiKey||"").trim();
   if(!apiKey)throw new Error("请先填写 API Key");
-  var headers={Authorization:"Bearer "+apiKey};
-  if(pid==="custom-openai"&&cfg.extraHeaders&&cfg.extraHeaders.trim()){
+  var extraHeaders=p.modelHeaders?p.modelHeaders(cfg):{Authorization:"Bearer "+apiKey};
+  var headers=Object.assign({},extraHeaders);
+  if(cfg.extraHeaders&&cfg.extraHeaders.trim()){
     try{
       var extra=JSON.parse(cfg.extraHeaders);
-      if(isDesktopProxyLocation()){
-        var bytes=new TextEncoder().encode(JSON.stringify(extra)),binary="";
-        bytes.forEach(function(byte){binary+=String.fromCharCode(byte);});
-        headers["X-Infinite-Canvas-Headers"]=btoa(binary);
-      }else Object.assign(headers,extra);
+      Object.assign(headers,extra);
     }catch(_){throw new Error("额外请求头不是有效的 JSON");}
+  }
+  if(isDesktopProxyLocation()){
+    var bytes=new TextEncoder().encode(JSON.stringify(headers)),binary="";
+    bytes.forEach(function(byte){binary+=String.fromCharCode(byte);});
+    headers={"X-Infinite-Canvas-Headers":btoa(binary)};
   }
   var response=await fetch(modelCatalogUrl(pid,base,path),{headers:headers,signal:signal});
   if(!response.ok){var detail="";try{var errorBody=await response.json();detail=(errorBody.error&&errorBody.error.message)||errorBody.message||"";}catch(_){}
@@ -1608,6 +1716,160 @@ registerProvider(makeHttp({
     if(s==="failed"||s==="error")return {status:"error",message:(j.error&&j.error.message)||"生成失败"};
     return {status:"pending"};}
 }));
+
+registerProvider({
+  id:"audio-hub",label:"音频 API（OpenAI 兼容）",kinds:["audio"],
+  icon:"声",accent:"#0d9488",group:"custom",testPath:"/v1/models",allowModelFetch:true,
+  description:"用一个 Base URL 和 API Key 接入兼容 OpenAI 音频协议的聚合服务，预置 Seed Audio、MiniMax 与 Eleven V3 模型。",
+  help:"适用于支持 POST /v1/audio/speech 的聚合平台。预置模型名称可直接选择；如果平台使用不同模型 ID，可点击“从上游获取”后重新选择。",
+  defaults:{baseUrl:"",apiKey:"",model_audio:"seed-audio-1.0",voice:"alloy"},
+  fields:[
+    {k:"baseUrl",l:"Base URL",ph:"https://api.example.com"},
+    {k:"apiKey",l:"API Key",pw:1},
+    {k:"voice",l:"默认音色 / Voice",ph:"alloy"}
+  ],
+  modelSlots:[{kind:"audio",key:"model_audio",label:"音频生成"}],
+  models:{audio:[
+    {id:"seed-audio-1.0",label:"Seed Audio 1.0"},
+    {id:"minimax-speech-2.8-hd",label:"Minimax-speech-2.8-hd"},
+    {id:"minimax-speech-2.8-turbo",label:"Minimax-speech-2.8-turbo"},
+    {id:"eleven-v3",label:"Eleven V3"}
+  ]},
+  audioModes:["voice"],
+  async run(ctx){
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{}),model=ctx.model||cfg.model_audio||"seed-audio-1.0";
+    if(!cfg.baseUrl)throw new Error("请先填写音频聚合服务的 Base URL");
+    if(!cfg.apiKey)throw new Error("请先填写音频聚合服务的 API Key");
+    var format=String((ctx.params||{}).format||"mp3").toLowerCase(),requestFormat=format==="ogg_opus"?"opus":format;
+    var response=await providerFetch(joinApiPath(cfg.baseUrl,"/v1/audio/speech"),{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+      body:JSON.stringify({model:model,input:ctx.prompt||"",voice:(ctx.params||{}).voiceId||cfg.voice||"alloy",response_format:requestFormat})
+    });
+    return parseAudioHttpResponse(response,format,"音频聚合 API · "+model);
+  }
+});
+
+registerProvider({
+  id:"seed-audio",label:"Seed Audio 1.0（BytePlus）",kinds:["audio"],
+  icon:"Seed",accent:"#0f766e",group:"cloud",allowModelFetch:false,validateOnly:true,
+  description:"字节 Seed Audio 1.0 非流式音频接口，可生成配音、对白、音效和完整声音场景。",
+  help:"在 BytePlus Voice 控制台创建 API Key。默认接口为 https://voice.ap-southeast-1.bytepluses.com/api/v3/tts/create，需要 X-Api-Key。单次最长 120 秒。",
+  defaults:{baseUrl:"https://voice.ap-southeast-1.bytepluses.com",apiKey:"",model_audio:"seed-audio-1.0",speaker:""},
+  fields:[
+    {k:"baseUrl",l:"Base URL"},
+    {k:"apiKey",l:"X-Api-Key",pw:1},
+    {k:"speaker",l:"默认 Speaker ID（可选）",ph:"不填则按提示词生成音色"}
+  ],
+  modelSlots:[{kind:"audio",key:"model_audio",label:"音频生成"}],
+  models:{audio:[{id:"seed-audio-1.0",label:"Seed Audio 1.0"}]},
+  audioModes:["voice","music","sfx","timbre"],
+  async run(ctx){
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{}),params=ctx.params||{},format=String(params.format||"wav").toLowerCase();
+    if(!cfg.apiKey)throw new Error("请先填写 BytePlus Voice API Key");
+    var body={
+      model:ctx.model||cfg.model_audio||"seed-audio-1.0",
+      text_prompt:String(ctx.prompt||params.text||"").trim(),
+      audio_config:{
+        format:format,
+        sample_rate:sampleRateNumber(params.sampleRate),
+        speech_rate:({passion:8,gentle:-5,serious:-3,natural:0}[params.expression]||0)
+      },
+      enable_subtitle:false
+    };
+    if(params.voiceId||cfg.speaker)body.speaker=String(params.voiceId||cfg.speaker);
+    if(!body.text_prompt)throw new Error("请填写需要生成的音频文本或场景描述");
+    var response=await providerFetch(joinApiPath(cfg.baseUrl,"/api/v3/tts/create"),{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Api-Key":cfg.apiKey,"X-Api-Request-Id":miniUUID()},
+      body:JSON.stringify(body)
+    });
+    return parseAudioHttpResponse(response,format,"Seed Audio 1.0");
+  }
+});
+
+function minimaxVoiceId(cfg,params){
+  if(params.voiceId)return String(params.voiceId);
+  if(cfg.voiceId)return String(cfg.voiceId);
+  return {male:"male-qn-jingying",female:"female-shaonv",youth:"male-qn-qingse",mature:"female-yujie",auto:"male-qn-qingse"}[params.voice]||"male-qn-qingse";
+}
+registerProvider({
+  id:"minimax",label:"MiniMax 语音 2.8",kinds:["audio"],
+  icon:"MM",accent:"#ef4444",group:"cloud",allowModelFetch:false,validateOnly:true,requiredConfig:["baseUrl","apiKey","groupId"],
+  description:"MiniMax T2A V2 语音合成，支持 speech-2.8-hd 与 speech-2.8-turbo。",
+  help:"MiniMax 国内接口使用 Base URL https://api.minimaxi.com 和 GroupId。模型需要填写 speech-2.8-hd 或 speech-2.8-turbo；Voice ID 可在 MiniMax 控制台声音列表查看。",
+  defaults:{baseUrl:"https://api.minimaxi.com",apiKey:"",groupId:"",model_audio:"speech-2.8-hd",voiceId:"male-qn-qingse"},
+  fields:[
+    {k:"baseUrl",l:"Base URL"},
+    {k:"apiKey",l:"API Key",pw:1},
+    {k:"groupId",l:"GroupId",ph:"MiniMax 控制台 GroupId"},
+    {k:"voiceId",l:"默认 Voice ID",ph:"male-qn-qingse"}
+  ],
+  modelSlots:[{kind:"audio",key:"model_audio",label:"音频生成"}],
+  models:{audio:[
+    {id:"speech-2.8-hd",label:"Minimax-speech-2.8-hd"},
+    {id:"speech-2.8-turbo",label:"Minimax-speech-2.8-turbo"}
+  ]},
+  audioModes:["voice"],
+  async run(ctx){
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{}),params=ctx.params||{},format=String(params.format||"mp3").toLowerCase();
+    if(!cfg.apiKey)throw new Error("请先填写 MiniMax API Key");
+    if(!cfg.groupId)throw new Error("请先填写 MiniMax GroupId");
+    var model=ctx.model||cfg.model_audio||"speech-2.8-hd",requestFormat=format==="ogg_opus"?"mp3":format;
+    var sample=sampleRateNumber(params.sampleRate);
+    if([8000,16000,22050,24000,32000,44100].indexOf(sample)<0)sample=32000;
+    var url=joinApiPath(cfg.baseUrl,"/v1/t2a_v2")+"?GroupId="+encodeURIComponent(cfg.groupId);
+    var response=await providerFetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+      body:JSON.stringify({
+        model:model,
+        text:String(params.text||ctx.prompt||"").trim(),
+        stream:false,
+        voice_setting:{voice_id:minimaxVoiceId(cfg,params),speed:({passion:1.12,gentle:.92,serious:.96,natural:1}[params.expression]||1),vol:1,pitch:0},
+        audio_setting:{sample_rate:sample,bitrate:128000,format:requestFormat,channel:1},
+        language_boost:{zh:"Chinese",en:"English",ja:"Japanese"}[params.language]||"auto"
+      })
+    });
+    return parseAudioHttpResponse(response,requestFormat,"MiniMax · "+model);
+  }
+});
+
+registerProvider({
+  id:"elevenlabs",label:"ElevenLabs Eleven V3",kinds:["audio"],
+  icon:"XI",accent:"#111827",group:"cloud",testPath:"/v1/models",allowModelFetch:true,
+  description:"ElevenLabs 文本转语音，默认使用 eleven_v3，并可从账号读取可用模型。",
+  help:"在 ElevenLabs 控制台复制 API Key、Voice ID。模型 ID 为 eleven_v3；接口返回二进制音频，桌面版会保存到本地素材目录。",
+  defaults:{baseUrl:"https://api.elevenlabs.io",apiKey:"",voiceId:"21m00Tcm4TlvDq8ikWAM",model_audio:"eleven_v3"},
+  fields:[
+    {k:"baseUrl",l:"Base URL"},
+    {k:"apiKey",l:"xi-api-key",pw:1},
+    {k:"voiceId",l:"默认 Voice ID",ph:"21m00Tcm4TlvDq8ikWAM"}
+  ],
+  modelSlots:[{kind:"audio",key:"model_audio",label:"音频生成"}],
+  models:{audio:[{id:"eleven_v3",label:"Eleven V3"}]},
+  audioModes:["voice"],
+  modelHeaders:function(cfg){return {"xi-api-key":String(cfg.apiKey||"")};},
+  async run(ctx){
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{}),params=ctx.params||{};
+    if(!cfg.apiKey)throw new Error("请先填写 ElevenLabs API Key");
+    var voiceId=String(params.voiceId||cfg.voiceId||"21m00Tcm4TlvDq8ikWAM"),format=String(params.format||"mp3").toLowerCase();
+    var outputFormat=format==="wav"?"wav_"+Math.min(48000,Math.max(16000,sampleRateNumber(params.sampleRate))):
+      format==="ogg_opus"?"opus_48000_128":"mp3_44100_128";
+    var url=joinApiPath(cfg.baseUrl,"/v1/text-to-speech/"+encodeURIComponent(voiceId))+"?output_format="+encodeURIComponent(outputFormat);
+    var response=await providerFetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"audio/mpeg","xi-api-key":cfg.apiKey},
+      body:JSON.stringify({
+        text:String(params.text||ctx.prompt||"").trim(),
+        model_id:ctx.model||cfg.model_audio||"eleven_v3",
+        language_code:params.language||undefined,
+        voice_settings:{stability:.5,similarity_boost:.75,style:({passion:.7,gentle:.25,serious:.35,natural:.45}[params.expression]||.45),use_speaker_boost:true}
+      })
+    });
+    return parseAudioHttpResponse(response,format,"ElevenLabs · "+(ctx.model||"eleven_v3"));
+  }
+});
 
 registerProvider(makeHttp({
   id:"kling",label:"可灵 Kling（模板·待补鉴权）",available:false,kinds:["video"],
@@ -1821,12 +2083,20 @@ function openImageSettings(anchor,n,onChange){
   imageSettingsPopover.appendChild(hint);imageSettingsPopover.hidden=false;positionImageSettingsPopover();
 }
 var audioOutputEl=document.getElementById("audioOutput");
+function audioFormatsForProvider(pid){
+  if(pid==="minimax")return ["wav","mp3","pcm"];
+  if(pid==="elevenlabs")return ["mp3","wav","ogg_opus"];
+  return ["wav","mp3","ogg_opus"];
+}
 function openAudioOutput(anchor,n,onChange){
   function render(){
+    var pid=n.provider||state.settings.active.audio||defaultProviderFor("audio");
+    var formats=audioFormatsForProvider(pid);
+    if(formats.indexOf(n.params.format)<0)n.params.format=formats[0];
     audioOutputEl.innerHTML='<div class="ao-title">采样率</div><div class="ao-grid">'+
-      ["8k","16k","24k","48k"].map(function(rate){return '<button type="button" data-rate="'+rate+'" class="'+(n.params.sampleRate===rate?"on":"")+'">'+rate+'</button>';}).join("")+
+      ["8k","16k","24k","32k","44.1k","48k"].map(function(rate){return '<button type="button" data-rate="'+rate+'" class="'+(n.params.sampleRate===rate?"on":"")+'">'+rate+'</button>';}).join("")+
       '</div><div class="ao-title">输出格式</div><div class="ao-formats">'+
-      ["wav","mp3","ogg_opus"].map(function(format){return '<button type="button" data-format="'+format+'" class="'+(n.params.format===format?"on":"")+'">'+format+'</button>';}).join("")+
+      formats.map(function(format){return '<button type="button" data-format="'+format+'" class="'+(n.params.format===format?"on":"")+'">'+format+'</button>';}).join("")+
       '</div>';
     audioOutputEl.querySelectorAll("[data-rate]").forEach(function(button){
       button.addEventListener("click",function(){n.params.sampleRate=button.dataset.rate;saveSoon();render();});
@@ -2269,9 +2539,8 @@ function renderResult(box,n){
     else if(o.url){var v=el("video");v.src=o.url;v.controls=true;box.appendChild(v);}
     else{var d=el("div","txtout");d.textContent=o.note||"视频待生成";box.appendChild(d);}
   } else if(o.kind==="audio"){
-    var ab=el("button","audio-preview");ab.textContent="▶ 朗读预览";
-    ab.addEventListener("click",function(e){e.stopPropagation();speak(o.text||"");});box.appendChild(ab);
-    if(o.url){var au=el("audio");au.src=o.url;au.controls=true;box.appendChild(au);}
+    var audioUrl=o.url||(o.b64&&/^data:audio\//i.test(o.b64)?o.b64:"");
+    if(audioUrl){var au=el("audio");au.src=audioUrl;au.controls=true;au.preload="metadata";box.appendChild(au);}
   } else if(o.text){var t=el("div","txtout");t.textContent=o.text;box.appendChild(t);}
   if(o.note){var nn=el("div");nn.style.cssText="font-size:10px;color:#94a3b8;margin-top:4px";nn.textContent=o.note;box.appendChild(nn);}
 }
@@ -2300,7 +2569,7 @@ function addNode(type,x,y,parentId,media){
   checkpoint();
   if(type==="group")return addGroup(x,y);
   var dt=NODETYPES[type];if(!dt)return null;
-  var n={id:id(),type:type,title:dt.label,x:x,y:y,w:type==="image"||type==="upload"?620:type==="video"?420:280,h:type==="image"||type==="upload"?380:type==="video"?310:300,params:makeParams(type),
+  var n={id:id(),type:type,title:dt.label,x:x,y:y,w:type==="image"||type==="upload"?620:type==="video"||type==="audio"?420:280,h:type==="image"||type==="upload"?380:type==="video"?310:300,params:makeParams(type),
     provider:"",model:"",status:"idle",output:null,log:""};
   if(type==="upload"&&media){
     n.params.mediaKind=media;
@@ -2980,9 +3249,14 @@ function openInspector(n){
     if(n.params.expression===undefined)n.params.expression="natural";
     if(n.params.musicStyle===undefined)n.params.musicStyle="auto";
     if(n.params.inputForm===undefined)n.params.inputForm="instrumental";
+    var audioProviderId=n.provider||state.settings.active.audio||defaultProviderFor("audio"),audioProvider=PROVIDERS[audioProviderId]||{};
+    var allAudioModes=[["voice","配音旁白"],["music","音乐配乐"],["sfx","音效"],["timbre","音色生成"]];
+    var audioModes=allAudioModes.filter(function(pair){return !audioProvider.audioModes||audioProvider.audioModes.indexOf(pair[0])>=0;});
+    if(!audioModes.length)audioModes=allAudioModes.slice(0,1);
+    if(audioModes.every(function(pair){return pair[0]!==n.params.mode;})){n.params.mode="voice";saveSoon();}
     var audioPanel=el("div","ie-audio");
     var rail=el("div","ie-audio-rail");
-    [["voice","配音旁白"],["music","音乐配乐"],["sfx","音效"],["timbre","音色生成"]].forEach(function(pair){
+    audioModes.forEach(function(pair){
       var modeButton=el("button","ie-audio-mode"+(n.params.mode===pair[0]?" on":""));modeButton.type="button";modeButton.textContent=pair[1];
       modeButton.addEventListener("click",function(){n.params.mode=pair[0];saveSoon();openInspector(n);});
       rail.appendChild(modeButton);
@@ -2997,10 +3271,21 @@ function openInspector(n){
       sel.addEventListener("change",function(){n.params[key]=sel.value;saveSoon();refreshPreview(n);});
       wrap.appendChild(sel);return wrap;
     }
+    function audioInput(key,label,placeholder,value){
+      var wrap=el("label","ie-audio-field");wrap.style.gridColumn="1/-1";
+      var head=el("span","ie-audio-label");head.textContent=label;wrap.appendChild(head);
+      var input=el("input");input.type="text";input.value=value||"";input.placeholder=placeholder||"";
+      input.addEventListener("input",function(){n.params[key]=input.value;saveSoon();});
+      wrap.appendChild(input);return wrap;
+    }
     if(n.params.mode==="voice"){
       audioRow.appendChild(audioSelect("voice","音色",[["auto","自动"],["male","男声沉稳"],["female","女声清亮"],["youth","少年"],["mature","御姐"]]));
       audioRow.appendChild(audioSelect("expression","表现力",[["natural","自然"],["passion","激情"],["gentle","温柔"],["serious","严肃"]]));
       audioRow.appendChild(audioSelect("language","语言",[["zh","中文"],["en","英文"],["ja","日文"]]));
+      var providerCfg=state.settings.providers[audioProviderId]||{},voiceValue=n.params.voiceId||"";
+      var voiceDefault=providerCfg.voiceId||providerCfg.speaker||(audioProvider.defaults&&(audioProvider.defaults.voiceId||audioProvider.defaults.speaker))||"";
+      var voiceLabel=audioProviderId==="seed-audio"?"Speaker ID（可选）":audioProviderId==="elevenlabs"?"Voice ID":audioProviderId==="minimax"?"Voice ID":audioProviderId==="audio-hub"?"Voice":"声音 ID";
+      audioRow.appendChild(audioInput("voiceId",voiceLabel,"留空使用接入中心默认值"+(voiceDefault?"："+voiceDefault:""),voiceValue));
     }else if(n.params.mode==="music"){
       audioRow.appendChild(audioSelect("musicStyle","音乐风格",[["auto","自动"],["pop","流行"],["guofeng","古风"],["electronic","电子"],["orchestral","管弦"],["rock","摇滚"]]));
       audioRow.appendChild(audioSelect("inputForm","输入形态",[["instrumental","纯乐器"],["vocal","带人声"]]));
@@ -3024,7 +3309,7 @@ function openInspector(n){
 
   var updateVideoSummary=function(){},updateImageSummary=function(){};
   var advanced=el("div","ie-advanced");
-  var pinned={ratio:1,dur:1,resolution:1,generateAudio:1,count:1,watermark:1,sourceImage:1,style:1,palette:1,composition:1,camera:1,quality:1,background:1};
+  var pinned={mode:1,ratio:1,dur:1,resolution:1,generateAudio:1,count:1,watermark:1,sourceImage:1,style:1,palette:1,composition:1,camera:1,quality:1,background:1};
   (dt.fields||[]).forEach(function(field){
     if(field===promptField||pinned[field.k])return;
     var wrap=el("div","ie-field"+(field.t==="textarea"?" full":""));
@@ -3105,7 +3390,12 @@ function openInspector(n){
     if(pid===n.provider)o.selected=true;providerSelect.appendChild(o);
   });
   providerSelect.addEventListener("change",function(){
-    n.provider=providerSelect.value;refresh(n);saveSoon();openInspector(n);
+    n.provider=providerSelect.value;
+    if(kind==="audio"){
+      var formats=audioFormatsForProvider(n.provider);
+      if(formats.indexOf(n.params.format)<0)n.params.format=formats[0];
+    }
+    refresh(n);saveSoon();openInspector(n);
   });
   controls.appendChild(providerSelect);
   var modelProvider=PROVIDERS[n.provider],modelSlot=modelProvider&&modelProvider.modelSlots&&modelProvider.modelSlots.filter(function(s){return s.kind===kind;})[0];
@@ -3865,6 +4155,7 @@ function normalizeProviderState(){
   state.nodes.forEach(function(n){
     if(n.provider==="mock"){n.provider="";changed=true;}
     if((n.type==="image"&&n.w===620&&n.h===350)||(n.type==="video"&&n.w===280&&n.h===300)){applyMediaAspect(n);changed=true;}
+    if(n.type==="audio"&&(n.w||0)<360){n.w=420;changed=true;}
   });
   if(state.settings.providers.mock){delete state.settings.providers.mock;changed=true;}
   if(changed)save();
@@ -3873,6 +4164,9 @@ function providerConfigured(pid){
   var p=PROVIDERS[pid];if(!p)return false;
   if(p.available===false)return false;
   var cfg=state.settings.providers[pid]||{},defaults=p.defaults||{};
+  if(Array.isArray(p.requiredConfig)&&p.requiredConfig.length){
+    return p.requiredConfig.every(function(key){return !!String(cfg[key]||defaults[key]||"").trim();});
+  }
   var secrets=(p.fields||[]).filter(function(f){return f.pw;});
   if(secrets.length)return !!(String(cfg.baseUrl||defaults.baseUrl||"").trim()&&secrets.some(function(f){return String(cfg[f.k]||"").trim();}));
   if(p.group==="local")return !!String(cfg.baseUrl||defaults.baseUrl||"").trim();
@@ -3880,7 +4174,7 @@ function providerConfigured(pid){
 }
 function providerModelSummary(pid){
   var p=PROVIDERS[pid],cfg=state.settings.providers[pid]||{},d=p.defaults||{};
-  var models=[cfg.model,cfg.model_text,cfg.model_image,cfg.model_video,d.model,d.model_text,d.model_image,d.model_video]
+  var models=[cfg.model,cfg.model_text,cfg.model_image,cfg.model_video,cfg.model_audio,d.model,d.model_text,d.model_image,d.model_video,d.model_audio]
     .map(function(v){return String(v||"").trim();}).filter(Boolean);
   models=models.filter(function(v,i){return models.indexOf(v)===i;});
   if(pid==="comfy")return String(cfg.checkpoint||"自动选择模型");
@@ -4033,7 +4327,7 @@ function renderProviderDetail(pid){
   if(modelFields.length||modelSlots.length){
     var modelSection=el("section","api-section"),mt=el("div","api-section-title");
     mt.innerHTML="<span style=\"color:#28725c\">"+(connectionFields.length?"02":"01")+"</span> 模型与生成参数 <span>该服务商独立保存</span>";
-    if(modelSlots.length){
+    if(modelSlots.length&&p.allowModelFetch!==false){
       var fetchModels=el("button","api-model-refresh");fetchModels.type="button";fetchModels.disabled=!!providerModelFetching[pid];
       fetchModels.textContent=providerModelFetching[pid]?"获取中…":"↻ 从上游获取";
       fetchModels.addEventListener("click",function(){fetchProviderModels(pid);});mt.appendChild(fetchModels);
@@ -4047,10 +4341,11 @@ function renderProviderDetail(pid){
         var choices=modelsForSlot(pid,slot),chosen=String(providerCfg[slot.key]||(p.defaults&&p.defaults[slot.key])||"");
         slotName.textContent=slot.label;slotCount.textContent=choices.length?String(choices.length)+" 个":"";
         slotTitle.appendChild(slotName);slotTitle.appendChild(slotCount);slotBox.appendChild(slotTitle);
-        if(!choices.length){var empty=el("div","api-model-empty");empty.textContent="还没有可选模型，点击右上角“从上游获取”。";list.appendChild(empty);}
+        if(!choices.length){var empty=el("div","api-model-empty");empty.textContent="还没有可选模型，请填写模型 ID 或点击“从上游获取”。";list.appendChild(empty);}
         else choices.forEach(function(choice){
           var pick=el("button","api-model-choice"+(choice.id===chosen?" on":""));pick.type="button";pick.setAttribute("aria-pressed",choice.id===chosen?"true":"false");
-          var star=el("span","api-model-star");star.textContent=choice.id===chosen?"★":"☆";pick.appendChild(star);pick.appendChild(document.createTextNode(choice.id));
+          var star=el("span","api-model-star");star.textContent=choice.id===chosen?"★":"☆";pick.appendChild(star);
+          pick.appendChild(document.createTextNode(choice.label&&choice.label!==choice.id?choice.label+" · "+choice.id:choice.id));
           pick.title=(choice.label&&choice.label!==choice.id?choice.label+" · ":"")+(choice.domain?choice.domain+" · ":"")+choice.id;
           pick.addEventListener("click",function(){var current=state.settings.providers[pid]||{};current[slot.key]=choice.id;state.settings.providers[pid]=current;save();renderProviderDetail(pid);});
           list.appendChild(pick);
@@ -4059,7 +4354,7 @@ function renderProviderDetail(pid){
       });
       modelSection.appendChild(slots);
       var notice=providerModelNotices[pid],noticeEl=el("div","api-model-notice"+(notice&&notice.tone?" "+notice.tone:""));
-      noticeEl.textContent=notice?notice.text:(providerCfg.discoveredModels&&providerCfg.discoveredModels.length?"已读取 "+providerCfg.discoveredModels.length+" 个模型；点击模型即可设为该类型的默认模型。":"获取到的模型会保存在当前设备的 API 配置中。");
+      noticeEl.textContent=notice?notice.text:(p.allowModelFetch===false?"已内置该接入的推荐模型；点击模型名称即可设为默认模型。":providerCfg.discoveredModels&&providerCfg.discoveredModels.length?"已读取 "+providerCfg.discoveredModels.length+" 个模型；点击模型即可设为该类型的默认模型。":"获取到的模型会保存在当前设备的 API 配置中。");
       modelSection.appendChild(noticeEl);
     }
     page.appendChild(modelSection);
@@ -4098,7 +4393,7 @@ function renderProviderDetail(pid){
   });
   actions.appendChild(test);actions.appendChild(done);actions.appendChild(clear);page.appendChild(actions);page.appendChild(result);
   var note=el("div","api-note");
-  note.textContent="安全说明：配置保存在当前设备，不会随工作流导出。Windows 桌面版通过本机转发读取模型列表和发送方舟请求；其他网页直连时可能受厂商跨域策略限制。";
+  note.textContent="安全说明：配置保存在当前设备，不会随工作流导出。Windows 桌面版通过本机转发读取模型列表并发送方舟、Seed Audio、MiniMax、ElevenLabs 与自定义音频请求；网页直连时可能受厂商跨域策略限制。";
   page.appendChild(note);modalBody.appendChild(page);
 }
 async function testProviderConnection(pid,resultEl){
@@ -4116,10 +4411,20 @@ async function testProviderConnection(pid,resultEl){
       resultEl.classList.add("ok");resultEl.textContent="ComfyUI 已连接"+(dev.name?" · "+dev.name:"");
       return;
     }
+    if(p.testConnection){
+      var customMessage=await p.testConnection(cfg,defaults,controller.signal);
+      resultEl.classList.add("ok");resultEl.textContent=customMessage||"连接成功";
+      return;
+    }
     var key=String(cfg.apiKey||"").trim();
     if(!key)throw new Error("请先填写 API Key");
     var baseUrl=String(cfg.baseUrl||defaults.baseUrl||"").replace(/\/+$/,"");
     if(!baseUrl)throw new Error("请先填写 Base URL");
+    if(p.validateOnly){
+      if(Array.isArray(p.requiredConfig)&&!providerConfigured(pid))throw new Error("请先补全必填配置");
+      resultEl.classList.add("ok");resultEl.textContent="配置字段完整；首次生成时会验证上游账号和模型权限";
+      return;
+    }
     var models=await requestProviderModelList(pid,cfg,controller.signal);
     var count=models.length;
     resultEl.classList.add("ok");resultEl.textContent="连接成功"+(count?" · 可读取 "+count+" 个模型":"");
@@ -4131,7 +4436,7 @@ async function testProviderConnection(pid,resultEl){
   }finally{clearTimeout(timer);}
 }
 async function fetchProviderModels(pid){
-  var p=PROVIDERS[pid];if(!p||!p.modelSlots||!p.modelSlots.length||providerModelFetching[pid])return;
+  var p=PROVIDERS[pid];if(!p||p.allowModelFetch===false||!p.modelSlots||!p.modelSlots.length||providerModelFetching[pid])return;
   providerModelFetching[pid]=true;providerModelNotices[pid]={text:"正在向上游读取模型列表…",tone:""};renderProviderDetail(pid);
   var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},18000);
   try{

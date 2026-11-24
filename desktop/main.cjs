@@ -15,6 +15,7 @@ const MAX_BODY_BYTES = 64 * 1024 * 1024;
 const MAX_MEDIA_BYTES = 512 * 1024 * 1024;
 const API_PREFIX = "/infinite-canvas/ark-proxy";
 const MODEL_PROXY_PATH = "/infinite-canvas/model-proxy";
+const PROVIDER_PROXY_PATH = "/infinite-canvas/provider-proxy";
 const APP_ROOT = app.getAppPath();
 const MEDIA_TYPES = Object.freeze({
   "image/jpeg": "jpg",
@@ -25,7 +26,14 @@ const MEDIA_TYPES = Object.freeze({
   "video/mp4": "mp4",
   "video/webm": "webm",
   "video/quicktime": "mov",
-  "video/ogg": "ogv"
+  "video/ogg": "ogv",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/flac": "flac",
+  "audio/l16": "pcm"
 });
 const MEDIA_MIME_TYPES = Object.freeze(Object.fromEntries(
   Object.entries(MEDIA_TYPES).map(([mime, extension]) => [extension, mime])
@@ -134,7 +142,7 @@ function sendJson(response, status, value) {
 }
 
 function mediaPathname(pathname) {
-  const match = pathname.match(/^\/infinite-canvas\/media\/([0-9a-f-]{36})\.(jpg|png|webp|gif|avif|mp4|webm|mov|ogv)$/i);
+  const match = pathname.match(/^\/infinite-canvas\/media\/([0-9a-f-]{36})\.(jpg|png|webp|gif|avif|mp4|webm|mov|ogv|mp3|wav|ogg|m4a|flac|pcm)$/i);
   return match ? { file: match[1].toLowerCase() + "." + match[2].toLowerCase(), extension: match[2].toLowerCase() } : null;
 }
 
@@ -305,11 +313,6 @@ function forwardModelListRequest(request, response, target) {
       return;
     }
   }
-  if (!headers.Authorization) {
-    sendJson(response, 401, { error: { message: "缺少 API Key" } });
-    return;
-  }
-
   const transport = target.protocol === "https:" ? https : http;
   const upstream = transport.request(target, {
     method: "GET",
@@ -343,6 +346,60 @@ function forwardModelListRequest(request, response, target) {
     if (!response.headersSent) sendJson(response, 502, { error: { message: error.message } });
     else response.destroy(error);
   });
+  upstream.end();
+}
+
+function getProviderProxyTarget(requestUrl) {
+  const raw = requestUrl.searchParams.get("url");
+  if (!raw || raw.length > 4096) return null;
+  let target;
+  try {
+    target = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (!["https:", "http:"].includes(target.protocol) || target.username || target.password || target.hash) return null;
+  return target;
+}
+
+async function forwardProviderRequest(request, response, target) {
+  let body;
+  try {
+    body = request.method === "POST" ? await readRequestBody(request) : undefined;
+  } catch (error) {
+    sendJson(response, error.statusCode || 400, { error: { message: error.message } });
+    return;
+  }
+
+  const allowed = new Set(["accept", "authorization", "content-type", "xi-api-key", "x-api-key", "x-api-request-id", "x-goog-api-key", "api-key"]);
+  const headers = {};
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (allowed.has(name.toLowerCase()) && typeof value === "string") headers[name] = value;
+  }
+  if (body) headers["Content-Length"] = body.length;
+
+  const transport = target.protocol === "https:" ? https : http;
+  const upstream = transport.request(target, {
+    method: request.method,
+    headers,
+    timeout: 180000
+  }, upstreamResponse => {
+    const responseHeaders = {
+      "Content-Type": upstreamResponse.headers["content-type"] || "application/octet-stream",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff"
+    };
+    if (upstreamResponse.headers["content-disposition"]) responseHeaders["Content-Disposition"] = upstreamResponse.headers["content-disposition"];
+    response.writeHead(upstreamResponse.statusCode || 502, responseHeaders);
+    upstreamResponse.pipe(response);
+  });
+
+  upstream.on("timeout", () => upstream.destroy(new Error("音频接口请求超时")));
+  upstream.on("error", error => {
+    if (!response.headersSent) sendJson(response, 502, { error: { message: error.message } });
+    else response.destroy(error);
+  });
+  if (body) upstream.write(body);
   upstream.end();
 }
 
@@ -625,6 +682,26 @@ async function handleRequest(request, response, port) {
       return;
     }
     forwardModelListRequest(request, response, target);
+    return;
+  }
+
+  if (pathname === PROVIDER_PROXY_PATH) {
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: { message: "音频接口转发仅支持 POST" } });
+      return;
+    }
+    const expectedProxyOrigin = "http://127.0.0.1:" + port;
+    if ((request.headers.origin && request.headers.origin !== expectedProxyOrigin)
+      || (request.headers.referer && !request.headers.referer.startsWith(expectedProxyOrigin + "/"))) {
+      sendJson(response, 403, { error: { message: "仅允许桌面画布访问音频接口" } });
+      return;
+    }
+    const target = getProviderProxyTarget(requestUrl);
+    if (!target) {
+      sendJson(response, 400, { error: { message: "音频接口地址无效" } });
+      return;
+    }
+    await forwardProviderRequest(request, response, target);
     return;
   }
 

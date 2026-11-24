@@ -886,6 +886,9 @@
     line-height:20px;cursor:pointer;opacity:0;transition:opacity .12s;z-index:3}
   .pm-bg-btn{left:6px}
   .pm-bg-clear{left:32px;color:#ff9aa3}
+  .ie-image-clear{width:18px;height:18px;padding:0;margin-left:-4px;border:0;border-radius:5px;background:transparent;
+    color:#7c828c;font-size:13px;line-height:1;cursor:pointer}
+  .ie-image-clear:hover{background:#2a2c33;color:#ff9aa3}
   .pm-card:hover .pm-bg-btn,.pm-card:hover .pm-bg-clear,.pm-card:focus-within .pm-bg-btn,.pm-card:focus-within .pm-bg-clear{opacity:1}
   .pm-rhythm{position:absolute;left:12%;right:12%;top:26%;bottom:26%;display:flex;gap:5px;align-items:stretch}
   .pm-rhythm i{flex:1;border-radius:3px;background:linear-gradient(180deg,#5fe0ff,#2c6f86);opacity:.92}
@@ -1307,7 +1310,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.22
+   AI漫剧节点工作台 v4.23
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1387,7 +1390,7 @@ var NODETYPES={
       if(p.composition&&p.composition!=="auto")tags.push("构图："+presetPromptText("composition",p.composition));
       if(p.camera&&p.camera!=="auto")tags.push("镜头："+p.camera);
       if(p.ratio)tags.push("画幅比例："+p.ratio);
-      if(p.resolution)tags.push("目标清晰度："+p.resolution);
+      if(p.resolution&&!(n.provider==="ark"&&/seedream[-_. ]?3/i.test(n.model||"")))tags.push("目标清晰度："+p.resolution);
       if(p.quality&&p.quality!=="standard")tags.push("画质："+({low:"低画质",high:"高画质",ultra:"超高画质",max:"极致画质"}[p.quality]||p.quality));
       if(p.background==="transparent")tags.push("透明背景");
       if(inp)tags.push("参考内容："+inp);
@@ -1783,8 +1786,9 @@ registerProvider(makeHttp({
   endpoint:function(ctx,cfg){
     if(ctx.kind==="image"){
       var params=ctx.params||{},model=ctx.model||cfg.model_image,first=imageReference(ctx),prompt=ctx.prompt||"";
-      var supportedBackground=/seedream[-_. ]?(?:5[-_. ]?(?:0|5))/i.test(model);
-      var body={model:model,prompt:prompt,size:params.resolution||"2K",response_format:"b64_json"};
+      var supportedBackground=/seedream[-_. ]?(?:5[-_. ]?(?:0|5)|4)/i.test(model);
+      var newGenSize=/seedream[-_. ]?(?:4|5)/i.test(model);
+      var body={model:model,prompt:prompt,size:newGenSize?String(params.resolution||"2K").toUpperCase():sizeOf(params.ratio),response_format:"b64_json"};
       if(first)body.image=videoImageUrl(first);
       if(params.background==="transparent"&&!supportedBackground)body.prompt+="，透明背景";
       else if(params.background&&params.background!=="auto"&&supportedBackground)body.background=params.background;
@@ -1794,14 +1798,20 @@ registerProvider(makeHttp({
     var first=ctx.inputs.find(function(i){return i.kind==="image"&&(i.url||i.b64);});
     if(first) content.push({type:"image_url",image_url:{url:first.url||("data:image/png;base64,"+first.b64)}});
     if(first)content[content.length-1]={type:"image_url",image_url:{url:videoImageUrl(first)},role:"first_frame"};
+    var videoModel=ctx.model||cfg.model_video||"";
+    var duration=Number(ctx.params&&ctx.params.dur)||5;
+    if(/seedance[-_. ]?1[-_. ]?0/i.test(videoModel))duration=duration<=7?5:10;
+    var videoBody={model:videoModel,content:content,
+      ratio:(ctx.params&&ctx.params.ratio)||"adaptive",
+      resolution:(ctx.params&&ctx.params.resolution)||"720p",
+      duration:duration,
+      watermark:!!(ctx.params&&ctx.params.watermark)};
+    if(/seedance[-_. ]?(?:2[-_. ]?0|2[-_. ]?5)/i.test(videoModel)){
+      videoBody.generate_audio=!ctx.params||ctx.params.generateAudio!==false;
+    }
     return {url:joinApiPath(cfg.baseUrl,"/contents/generations/tasks"),
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(cfg.apiKey||"")},
-      body:JSON.stringify({model:ctx.model||cfg.model_video,content:content,
-        ratio:(ctx.params&&ctx.params.ratio)||"adaptive",
-        resolution:(ctx.params&&ctx.params.resolution)||"720p",
-        duration:Number(ctx.params&&ctx.params.dur)||5,
-        generate_audio:!ctx.params||ctx.params.generateAudio!==false,
-        watermark:!!(ctx.params&&ctx.params.watermark)})};
+      body:JSON.stringify(videoBody)};
   },
   parse:function(j){if(j.data&&j.data[0])return {kind:"image",b64:j.data[0].b64_json,url:j.data[0].url};return {kind:"video",taskId:j.id};},
   async:true,
@@ -3290,7 +3300,7 @@ function openInspector(n){
       open.title="打开"+spec[1]+"预设";
       open.addEventListener("pointerdown",function(e){e.stopPropagation();});
       open.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();openPresetPicker(spec[0],n);});
-      item.appendChild(open);quick.appendChild(item);
+      item.appendChild(open);appendPresetChipClear(item,n,spec[0],spec[1]);quick.appendChild(item);
     });
     var camItem=el("label","ie-image-quick-item"),camIcon=el("span","ie-image-quick-icon");camIcon.textContent="◎";camItem.appendChild(camIcon);
     var cameraOptions=[["auto","相机"],["人像镜头","人像镜头"],["广角镜头","广角镜头"],["俯拍","俯拍"],["仰拍","仰拍"],["浅景深","浅景深"]];
@@ -3312,7 +3322,7 @@ function openInspector(n){
       open.title="打开"+spec[1]+"预设";
       open.addEventListener("pointerdown",function(e){e.stopPropagation();});
       open.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();openPresetPicker(spec[0],n);});
-      item.appendChild(open);vquick.appendChild(item);
+      item.appendChild(open);appendPresetChipClear(item,n,spec[0],spec[1]);vquick.appendChild(item);
     });
     var vcamItem=el("label","ie-image-quick-item"),vcamIcon=el("span","ie-image-quick-icon");vcamIcon.textContent="◎";vcamItem.appendChild(vcamIcon);
     var videoCameraOptions=[["auto","相机"],["人像镜头","人像镜头"],["广角镜头","广角镜头"],["俯拍","俯拍"],["仰拍","仰拍"],["浅景深","浅景深"],["跟拍","跟拍"],["航拍","航拍"]];
@@ -3745,6 +3755,27 @@ function describeGenerationError(err){
   }
   if(/Safe Experience Mode|ModelQuotaExhausted/i.test(message)){
     return "失败：火山方舟账号触发了「安心体验模式」额度上限，该模型服务已被暂停。请到方舟控制台 → 开通管理 → 关闭安心体验模式（关闭后按量付费），再重新运行。原始信息："+message;
+  }
+  if(/InvalidParameter[.\w]*Duration|duration/i.test(message)){
+    return "失败：时长不符合当前视频模型的要求（常见为只支持 5 或 10 秒）。请调整时长后重试；原始信息："+message;
+  }
+  if(/InvalidParameter[.\w]*Size|InvalidParameter[.\w]*Resolution|resolution/i.test(message)){
+    return "失败：清晰度 / 尺寸不被当前模型支持。请换一个清晰度或比例后重试；原始信息："+message;
+  }
+  if(/generate_audio|audio.*not.*support/i.test(message)){
+    return "失败：当前视频模型不支持生成音频，请在「更多参数」里关闭生成音频后重试；原始信息："+message;
+  }
+  if(/InvalidParameter[.\w]*Image|image.*(?:size|format|too large)|图片.*(?:格式|过大)/i.test(message)){
+    return "失败：参考图片不符合要求（格式、尺寸或体积超限）。换一张更小的 JPG/PNG 后重试；原始信息："+message;
+  }
+  if(/InvalidEndpointOrModel|ModelNotOpen|AccessDenied|does not exist/i.test(message)){
+    return "失败：模型未开通或名称不正确。请到方舟控制台开通对应模型，再在节点的「当前厂商设置」里重新获取模型列表；原始信息："+message;
+  }
+  if(/401|Authentication|invalid.*api.*key/i.test(message)){
+    return "失败：API Key 无效或未配置。请到「设置 → API 接入中心」重新填写；原始信息："+message;
+  }
+  if(/429|rate limit|RequestLimit/i.test(message)){
+    return "失败：触发并发或频率限制，稍等片刻再试；原始信息："+message;
   }
   return "失败："+message;
 }
@@ -4834,6 +4865,25 @@ function currentPresetId(kind,node){
   var params=(node&&node.params)||{};
   return params[presetParamName(kind)+"Id"]||"";
 }
+function appendPresetChipClear(item,n,key,label){
+  var value=n.params?n.params[key]:"";
+  if(!value||value==="auto")return;
+  var clear=el("button","ie-image-clear");clear.type="button";clear.textContent="×";
+  clear.title="取消"+label;
+  clear.setAttribute("aria-label","取消"+label);
+  clear.addEventListener("pointerdown",function(event){event.stopPropagation();});
+  clear.addEventListener("click",function(event){
+    event.preventDefault();event.stopPropagation();
+    checkpoint();
+    n.params[key]="auto";
+    delete n.params[key+"Id"];
+    if(key==="palette")delete n.params.paletteColors;
+    saveSoon();refresh(n);
+    if(selectedId===n.id)openInspector(n);
+    toast("已取消"+label);
+  });
+  item.appendChild(clear);
+}
 function openPresetPicker(kind,node){
   presetState={kind:kind,tab:"official",query:"",selectedId:currentPresetId(kind,node),node:node,creating:false};
   presetSearchEl.value="";
@@ -4844,6 +4894,7 @@ function openPresetPicker(kind,node){
 function closePresetPicker(){presetModal.hidden=true;presetState.node=null;presetState.creating=false;}
 function renderPresetModal(){
   var kind=presetState.kind,meta=PRESET_META[kind];
+  presetOkEl.textContent=presetState.selectedId?"确定":"清除";
   presetTabsEl.innerHTML="";
   [["official",meta.officialLabel],["mine",meta.mineLabel]].forEach(function(pair){
     var tab=el("button","pm-tab"+(presetState.tab===pair[0]?" on":""));
@@ -4915,7 +4966,7 @@ function renderPresetModal(){
     var name=el("span","pm-name");name.textContent=item.name;
     card.appendChild(thumb);card.appendChild(name);
     card.addEventListener("click",function(){
-      presetState.selectedId=item.id;
+      presetState.selectedId=presetState.selectedId===item.id?"":item.id;
       renderPresetModal();
     });
     card.addEventListener("dblclick",function(){presetState.selectedId=item.id;applyPresetSelection();});
@@ -5089,6 +5140,19 @@ function clearPresetBackground(kind,id){
 }
 function applyPresetSelection(){
   var node=presetState.node;
+  if(!node||!nodeById(node.id)){closePresetPicker();return;}
+  if(!presetState.selectedId){
+    var clearKey=presetParamName(presetState.kind),clearKind=presetState.kind;
+    if(!node.params[clearKey]||node.params[clearKey]==="auto"){closePresetPicker();return;}
+    checkpoint();
+    node.params[clearKey]="auto";
+    delete node.params[clearKey+"Id"];
+    if(clearKey==="palette")delete node.params.paletteColors;
+    saveSoon();closePresetPicker();refresh(node);
+    if(selectedId===node.id)openInspector(node);
+    toast("已取消"+PRESET_META[clearKind].label);
+    return;
+  }
   var list=presetState.tab==="mine"?minePresets(presetState.kind):officialPresets(presetState.kind);
   var item=list.filter(function(entry){return entry.id===presetState.selectedId;})[0];
   if(!item){closePresetPicker();return;}
@@ -5121,7 +5185,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.10";
+var APP_VERSION="1.3.1";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5943,18 +6007,31 @@ function openHelp(){
     '<li><b>快捷键</b>：查看全部键盘操作。</li>'+
     '<li><b>AI 助手</b>（… 右侧光球）：接入 DeepSeek，可咨询创作灵感与画布用法；点 ⚙ 填写 API Key，Key 只保存在本机。</li></ul>'+
     '<h3>节点类型</h3><ul>'+
-    '<li>文本、图片、视频、图像生成、图生视频、音频生成、合成导出、上传素材；图片/视频/音频节点只从本地或素材库选取素材，不调用模型。</li>'+
-    '<li>图像生成支持风格 / 构图 / 配色预设（官方与自定义），会写入生成提示词。</li>'+
-    '<li>音频支持配音旁白、音乐配乐、音效、音色生成四种模式与采样率 / 输出格式设置。</li></ul>'+
+    '<li><b>文本 / 图片 / 视频 / 音频</b>：纯素材节点，只从本地或素材库选取，不调用模型。</li>'+
+    '<li><b>图像生成</b>：提示词 + 比例 + 清晰度（1K/2K/4K）+ 画质 + 背景；接入参考图后变成图生图。</li>'+
+    '<li><b>图生视频</b>：上游图片作为首帧，写入运镜描述；可设比例、清晰度、时长、生成音频、数量与相机。</li>'+
+    '<li><b>音频生成</b>：配音旁白、音乐配乐、音效、音色四种模式，支持采样率与输出格式。</li>'+
+    '<li><b>合成导出 / 上传素材</b>：合成预览与本地素材上传入口。</li></ul>'+
+    '<h3>预设（风格 / 构图 / 配色 / 节奏 / 相机）</h3><ul>'+
+    '<li>图像生成有 风格 / 构图 / 配色；图生视频有 风格 / 构图 / 节奏，并多出「相机」下拉。</li>'+
+    '<li>打开预设后单击卡片即选中，<b>再次单击同一张卡片即可取消</b>；底部按钮会从「确定」变成「清除」。</li>'+
+    '<li>已在节点上生效的预设会显示「×」，点它可单独取消该项。</li>'+
+    '<li>每个预设卡片左上角的「⬆」可上传自定义背景：风格支持图片或视频，构图与配色支持图片，节奏只支持视频。</li>'+
+    '<li>「我的风格 / 构图 / 配色 / 节奏」可新建；节奏支持导入 JSON（<code>[{"name":"快切","prompt":"描述","bars":[2,1,2]}]</code>）。</li></ul>'+
+    '<h3>图像生成与图生视频要点</h3><ul>'+
+    '<li>图生视频一旦接了首帧，比例必须是 <b>Auto</b>（方舟要求输出跟随首帧），界面会自动锁定并置灰其他比例。</li>'+
+    '<li>图生视频的时长按模型限制：Seedance 1.0 只接受 5 或 10 秒，其他模型在 4~12 / 4~30 秒区间。</li>'+
+    '<li>生成数量大于 1 时会并行发起多次请求，结果以九宫格展示；部分失败会保留已成功的并提示比例。</li>'+
+    '<li>常见报错已翻译成中文：「比例不合法」「时长不支持」「清晰度不支持」「音频不支持」「模型未开通」「Key 无效」会直接提示怎么改。</li></ul>'+
     '<h3>生成与配置</h3><ul>'+
-    '<li>在左上角「设置 → API 接入」配置服务商与默认线路；没有 Key 时可先用「本地模拟」跑通流程。</li>'+
-    '<li>节点运行中会显示进度条与百分比，同一节点同时只会发起一次生成。</li>'+
+    '<li>在左上角「设置 → API 接入」配置服务商与默认线路，未配置时运行会提示先选择服务商。</li>'+
+    '<li>节点运行中显示进度条与百分比，同一节点同时只会发起一次生成。</li>'+
     '<li>「生成历史」打开的是媒体库：按 本项目 / 全部项目 和 图像 / 视频 / 音频 分类浏览真实生成结果，点素材可定位节点、打开文件位置或复制路径。</li></ul>'+
     '<h3>数据</h3><ul>'+
     '<li>画布保存在本机（浏览器 localStorage 或桌面端应用数据），不上传服务器；Key 不随工作流导出。</li>'+
     '<li>桌面版会把生成的图片、视频按画布名存到本机磁盘（默认「作品素材」目录），生成历史以 JSONL 追加保存，路径可在「设置 → 本地存储」修改。</li>'+
     '<li>左上角可切换/新建画布；退出项目会保存当前画布并打开一个空白画布。</li>'+
-    '<li>框选多个节点后按 <kbd>J</kbd> 会按左右顺序自动把它们串成连线。</li></ul>';
+    '<li>框选多个节点后按 <kbd>J</kbd> 进入连线模式，从任意节点拖到目标即可整框连接。</li></ul>';
   helpModal.classList.add("on");
 }
 function closeHelp(){helpModal.classList.remove("on");}
@@ -5989,7 +6066,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.10";
+var canvasApiVersion="1.3.1";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

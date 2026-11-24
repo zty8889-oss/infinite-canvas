@@ -709,6 +709,57 @@ async function handleRequest(request, response, port) {
   if (pathname === "/infinite-canvas/media" || pathname.startsWith("/infinite-canvas/media/")) {
     if (await handleMediaRequest(request, response, pathname, port)) return;
   }
+  if (pathname === "/infinite-canvas/chat-proxy") {
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: { message: "助手请求仅支持 POST" } });
+      return;
+    }
+    if ((request.headers.origin && request.headers.origin !== expectedOrigin)
+      || (request.headers.referer && !request.headers.referer.startsWith(expectedOrigin + "/"))) {
+      sendJson(response, 403, { error: { message: "仅允许桌面画布访问模型服务" } });
+      return;
+    }
+    try {
+      const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+      const base = String(body.baseUrl || "https://api.deepseek.com").replace(/\/+$/, "");
+      const target = new URL(base + "/chat/completions");
+      if (target.protocol !== "https:") throw Object.assign(new Error("只支持 HTTPS 模型地址"), { statusCode: 400 });
+      const payload = JSON.stringify(body.payload || {});
+      const upstream = await new Promise((resolve, reject) => {
+        const forward = https.request({
+          hostname: target.hostname,
+          port: target.port || 443,
+          path: target.pathname + target.search,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(payload),
+            "Authorization": "Bearer " + String(body.apiKey || ""),
+            "Accept": "application/json"
+          },
+          timeout: 120000
+        }, upstreamResponse => {
+          const chunks = [];
+          upstreamResponse.on("data", chunk => chunks.push(chunk));
+          upstreamResponse.on("end", () => resolve({ status: upstreamResponse.statusCode || 502, body: Buffer.concat(chunks) }));
+          upstreamResponse.on("error", reject);
+        });
+        forward.on("timeout", () => forward.destroy(new Error("模型服务响应超时")));
+        forward.on("error", reject);
+        forward.end(payload);
+      });
+      response.writeHead(upstream.status, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": upstream.body.length,
+        "Cache-Control": "no-store"
+      });
+      response.end(upstream.body);
+    } catch (error) {
+      if (!response.headersSent) sendJson(response, error.statusCode || 502, { error: { message: error.message || "模型请求失败" } });
+      else response.destroy(error);
+    }
+    return;
+  }
   if (pathname.startsWith("/infinite-canvas/update/")) {
     if ((request.headers.origin && request.headers.origin !== expectedOrigin)
       || (request.headers.referer && !request.headers.referer.startsWith(expectedOrigin + "/"))) {

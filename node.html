@@ -106,6 +106,55 @@
   .al-prompt-actions button{height:32px;padding:0 14px;border-radius:8px;font-size:12.5px;cursor:pointer}
   .al-prompt-actions .ghost{border:1px solid #34363c;background:#1b1c21;color:#c3c7cf}
   .al-prompt-actions .primary{border:1px solid #2c9cb8;background:#147d98;color:#fff}
+
+  /* ---- v4.19 AI 助手 ---- */
+  .ai-orb{position:relative;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%}
+  .ai-orb:before{content:"";position:absolute;inset:-2px;border-radius:50%;
+    background:conic-gradient(from 0deg,#7ef0ff,#8b7bff,#4ad9c0,#7ef0ff);filter:blur(1.4px);opacity:.9;
+    animation:aiSpin 3.6s linear infinite}
+  .ai-orb-core{position:relative;width:15px;height:15px;border-radius:50%;display:block;
+    background:radial-gradient(circle at 32% 26%,#e6fdff,#5fd8ff 36%,#6f7bff 70%,#262b63 100%);
+    box-shadow:inset -2px -3px 6px rgba(0,0,0,.5),0 0 9px rgba(110,220,255,.55);
+    animation:aiPulse 2.8s ease-in-out infinite}
+  @keyframes aiSpin{to{transform:rotate(360deg)}}
+  @keyframes aiPulse{0%,100%{transform:scale(1)}50%{transform:scale(.9)}}
+  #barCenter button[data-act="assistant"].on{background:#24262c;box-shadow:0 0 0 1px rgba(126,240,255,.35) inset}
+  #aiPanel{position:fixed;right:14px;top:76px;bottom:96px;width:min(392px,92vw);z-index:96;display:flex;flex-direction:column;
+    background:#131418;border:1px solid #2f3137;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}
+  #aiPanel[hidden]{display:none}
+  .ai-head{display:flex;align-items:center;gap:9px;padding:12px 12px;border-bottom:1px solid #23252b}
+  .ai-title{flex:1;font-size:13px;color:#eef0f4;font-weight:650;display:flex;align-items:center;gap:7px}
+  .ai-title small{font-size:10.5px;color:#7f8792;font-weight:400;padding:1px 7px;border:1px solid #2f3137;border-radius:999px}
+  .ai-ico{width:26px;height:26px;border:1px solid #34363c;border-radius:7px;background:#1c1e23;color:#aeb2bc;
+    font-size:14px;cursor:pointer;line-height:1}
+  .ai-ico:hover{color:#fff;border-color:#4a4d55}
+  .ai-settings{padding:12px;border-bottom:1px solid #23252b;background:#15161a;display:grid;gap:9px}
+  .ai-settings[hidden]{display:none}
+  .ai-settings label{display:grid;gap:4px;font-size:11.5px;color:#8d939c}
+  .ai-settings input,.ai-settings select{height:31px;padding:0 9px;border:1px solid #303238;border-radius:8px;
+    background:#101216;color:#e6e7ea;font-size:12.5px;outline:none;width:100%;box-sizing:border-box}
+  .ai-settings input:focus{border-color:#2c9cb8}
+  .ai-settings-actions{display:flex;align-items:center;gap:9px}
+  .ai-settings-actions button{height:29px;padding:0 12px;border:1px solid #2c9cb8;border-radius:8px;background:#147d98;
+    color:#fff;font-size:12px;cursor:pointer}
+  .ai-settings-actions span{font-size:11.5px;color:#7f8792}
+  .ai-body{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+  .ai-msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .ai-msg.user{align-self:flex-end;background:#1d3b46;border:1px solid #2c6478;color:#e7f6fb;border-bottom-right-radius:4px}
+  .ai-msg.bot{align-self:flex-start;background:#1a1c21;border:1px solid #2c2e34;color:#d3d7de;border-bottom-left-radius:4px}
+  .ai-msg.err{align-self:flex-start;background:#2a1a1c;border:1px solid #5c2b30;color:#ffb3ba}
+  .ai-msg.typing{color:#8b929c;font-style:normal}
+  .ai-quick{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}
+  .ai-quick button{height:26px;padding:0 10px;border:1px solid #2f3137;border-radius:999px;background:#191b20;
+    color:#a9aeb8;font-size:11.5px;cursor:pointer;white-space:nowrap}
+  .ai-quick button:hover{color:#fff;border-color:#4a4d55;background:#22242a}
+  .ai-composer{display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid #23252b}
+  .ai-composer textarea{flex:1;min-height:42px;max-height:120px;resize:none;padding:9px 10px;border:1px solid #303238;
+    border-radius:10px;background:#101216;color:#e6e7ea;font-size:12.5px;line-height:1.5;outline:none;font-family:inherit}
+  .ai-composer textarea:focus{border-color:#2c9cb8}
+  .ai-composer button{width:42px;border:1px solid #2c9cb8;border-radius:10px;background:#147d98;color:#fff;
+    font-size:16px;cursor:pointer}
+  .ai-composer button:disabled{opacity:.45;cursor:default}
   #edges path.temp{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}
   #nodes{position:absolute;left:0;top:0}
 
@@ -719,8 +768,9 @@
   .nd .hd .ic{color:#63dcff!important;text-shadow:0 0 10px rgba(57,208,255,.55);filter:none!important;opacity:1!important}
   .nd .nd-shell{border-color:#49505b}
   .nd.selected .nd-shell{border-color:#56dfff;box-shadow:0 0 0 1px rgba(86,223,255,.36),0 0 24px rgba(49,203,239,.12),0 18px 42px rgba(0,0,0,.32)}
-  .nd .port{border-color:#3f8497;color:#69dfff;box-shadow:0 0 12px rgba(52,201,235,.12),0 5px 14px rgba(0,0,0,.35)}
-  .nd .port:hover{border-color:#a6f0ff;box-shadow:0 0 17px rgba(72,221,255,.4)}
+  .nd .port{border-color:rgba(255,255,255,.52);color:#ffffff;box-shadow:0 5px 14px rgba(0,0,0,.42);
+    transition:opacity .12s ease,background .12s ease,color .12s ease,border-color .12s ease,transform .08s ease}
+  .nd .port:hover{border-color:#ffffff;background:#ffffff;color:#151619;box-shadow:0 0 16px rgba(255,255,255,.4)}
   #viewport.connect-mode,.connect-mode .nd{cursor:crosshair!important}
   #viewport.connect-mode .nd-shell{border-color:#49c8e6}
   #inspector .ie-action:hover,#inspector .ie-tool:hover{border-color:#387b8c;box-shadow:0 0 12px rgba(52,201,235,.1)}
@@ -778,7 +828,7 @@
 
   /* ---- v1.0.9 连线目标高亮 ---- */
   .nd.link-target .nd-shell{border-color:#56dfff!important;box-shadow:0 0 0 1px rgba(86,223,255,.55),0 0 26px rgba(49,203,239,.35)!important}
-  .nd.link-target .port.in{background:#56dfff;box-shadow:0 0 16px rgba(72,221,255,.85)}
+  .nd.link-target .port.in{background:#ffffff;color:#151619;border-color:#ffffff;box-shadow:0 0 18px rgba(255,255,255,.85)}
 
   /* ---- v4.3 风格 / 构图 / 配色 预设选择器 ---- */
   #inspector .ie-image-open{width:100%;min-width:0;height:34px;padding:0 14px 0 0;border:0;background:transparent;
@@ -1047,6 +1097,7 @@
   <button data-act="history" class="iconOnly" title="生成历史" aria-label="生成历史">◷</button>
   <button data-act="help" class="iconOnly" title="帮助文档" aria-label="帮助文档">?</button>
   <button data-act="more" class="iconOnly" title="更多操作" aria-label="更多操作">⋯</button>
+  <button data-act="assistant" class="iconOnly" title="AI 助手：创作灵感与画布用法" aria-label="AI 助手"><span class="ai-orb"><i class="ai-orb-core"></i></span></button>
 </div>
 <div id="updateAnchor" hidden></div>
 <div id="morePopover"></div>
@@ -1086,6 +1137,30 @@
   </div>
 </div>
 <div id="alMenu" class="al-menu"></div>
+
+<div id="aiPanel" hidden>
+  <div class="ai-head">
+    <span class="ai-orb"><i class="ai-orb-core"></i></span>
+    <span class="ai-title">AI 助手<small id="aiModelTag">DeepSeek</small></span>
+    <button class="ai-ico" id="aiSettingsBtn" type="button" title="助手设置" aria-label="助手设置">⚙</button>
+    <button class="ai-ico" id="aiClose" type="button" title="关闭" aria-label="关闭">×</button>
+  </div>
+  <div class="ai-settings" id="aiSettings" hidden>
+    <label>DeepSeek API Key<input id="aiKey" type="password" placeholder="sk-..." autocomplete="off"></label>
+    <label>模型<select id="aiModel">
+      <option value="deepseek-chat">deepseek-chat</option>
+      <option value="deepseek-reasoner">deepseek-reasoner</option>
+    </select></label>
+    <label>接口地址<input id="aiBase" type="text" placeholder="https://api.deepseek.com"></label>
+    <div class="ai-settings-actions"><button id="aiSave" type="button">保存</button><span id="aiHint">Key 只保存在本机</span></div>
+  </div>
+  <div class="ai-body" id="aiBody"></div>
+  <div class="ai-quick" id="aiQuick"></div>
+  <div class="ai-composer">
+    <textarea id="aiInput" rows="2" placeholder="问问灵感或画布用法，Enter 发送，Shift+Enter 换行"></textarea>
+    <button id="aiSend" type="button" title="发送" aria-label="发送">↑</button>
+  </div>
+</div>
 <div id="cutBadge">剪刀模式：按住左键划过连线即可切断，松开结束</div>
 <div id="linkBadge">连线模式：从节点任意位置拖到目标节点；多选时会一起连接（J / Esc 退出）</div>
 
@@ -1213,7 +1288,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.18
+   AI漫剧节点工作台 v4.19
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -2243,10 +2318,25 @@ vp.addEventListener("pointermove",function(e){
       var near=nearPointer.x>rect.left-pad&&nearPointer.x<rect.right+pad&&nearPointer.y>rect.top-pad&&nearPointer.y<rect.bottom+pad;
       element.classList.toggle("near",near);
     });
+    var magnetRadius=26,magnetLimit=9,best=null,bestDistance=Infinity;
+    nodesEl.querySelectorAll(".port").forEach(function(port){
+      var rect=port.getBoundingClientRect();
+      var cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+      var distance=Math.hypot(nearPointer.x-cx,nearPointer.y-cy);
+      if(distance<magnetRadius&&distance<bestDistance){bestDistance=distance;best={el:port,cx:cx,cy:cy};}
+      else port.style.transform="";
+    });
+    if(best){
+      var dx=nearPointer.x-best.cx,dy=nearPointer.y-best.cy;
+      var length=Math.hypot(dx,dy)||1;
+      var reach=Math.min(magnetLimit,length);
+      best.el.style.transform="translate("+(dx/length*reach).toFixed(1)+"px,"+(dy/length*reach).toFixed(1)+"px)";
+    }
   });
 },{passive:true});
 vp.addEventListener("pointerleave",function(){
   nodesEl.querySelectorAll(".nd.near").forEach(function(element){element.classList.remove("near");});
+  nodesEl.querySelectorAll(".port").forEach(function(port){port.style.transform="";});
 });
 
 var pendingWire=null;
@@ -4091,6 +4181,7 @@ function handleBarAction(act,btn){
   else if(act==="undo")restoreHistory(undoStack,redoStack);
   else if(act==="redo")restoreHistory(redoStack,undoStack);
   else if(act==="more")togglePopover(morePopover,btn);
+  else if(act==="assistant")toggleAssistant();
   else if(act==="assets")openAssetLibrary();
   else if(act==="arrange"){var arranged=window.infiniteCanvas.arrangeCanvas();if(arranged&&arranged.ok){fitView();toast("已整理画布，可按 Ctrl+Z 撤销");}else toast("画布上没有可整理的节点");}
   else if(act==="minimap")toggleMinimap(btn);
@@ -4871,7 +4962,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.2.6";
+var APP_VERSION="1.2.7";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5292,6 +5383,209 @@ document.getElementById("alUpload").addEventListener("click",function(){
   };
   input.click();
 });
+/* ---- AI 助手（v4.19）：创作灵感 + 画布用法咨询 ---- */
+var AI_CONFIG_KEY="ic-ai-assistant-v1";
+var aiStore={apiKey:"",model:"deepseek-chat",baseUrl:"https://api.deepseek.com",messages:[]};
+var aiBusy=false;
+var aiPanelEl=document.getElementById("aiPanel");
+var aiBodyEl=document.getElementById("aiBody");
+var aiInputEl=document.getElementById("aiInput");
+var aiSendBtn=document.getElementById("aiSend");
+var aiSettingsEl=document.getElementById("aiSettings");
+var aiQuickEl=document.getElementById("aiQuick");
+function loadAiStore(){
+  try{
+    var raw=localStorage.getItem(AI_CONFIG_KEY);if(!raw)return;
+    var data=JSON.parse(raw);
+    if(data&&typeof data==="object"){
+      if(typeof data.apiKey==="string")aiStore.apiKey=data.apiKey;
+      if(typeof data.model==="string")aiStore.model=data.model;
+      if(typeof data.baseUrl==="string")aiStore.baseUrl=data.baseUrl;
+    }
+  }catch(_){}
+}
+function saveAiStore(){
+  try{localStorage.setItem(AI_CONFIG_KEY,JSON.stringify({apiKey:aiStore.apiKey,model:aiStore.model,baseUrl:aiStore.baseUrl}));}
+  catch(_){toast("本机存储空间不足，助手设置未保存");}
+}
+loadAiStore();
+
+var AI_GUIDE=[
+  "你在「无限画布 · AI 漫剧工作台」里担任创作助手，用户是漫剧导演/编剧/美术。",
+  "职责：1) 给创作灵感（剧情钩子、分镜、画面、镜头、配乐）；2) 把用户的想法翻译成画布节点的具体参数；3) 解答画布用法。",
+  "画布知识（必须准确）：",
+  "- 节点：文本、图片、视频、音频（纯素材节点，只能上传或从素材库选择，不调用模型）、图像生成、图生视频、音频生成、合成导出、上传素材。",
+  "- 右键菜单：上传 / 添加节点 / 撤销 / 重做 / 复制 / 粘贴。点「添加节点」会切换到「新建节点」页，点「返回操作菜单」回到上一页。",
+  "- 连线：鼠标移到节点上会出现左右两个白色加号，从右侧加号拖到目标节点即可连接；按 J 进入连线模式，可在节点任意位置拖拽建线；框选多个节点会出现整体虚线框，从右侧白色把手拖出可一次性把整框连到目标节点。",
+  "- 双击一条连线可删除；按住 Y 出现剪刀，按住左键划过连线可批量切断。",
+  "- 图像生成有风格/构图/配色预设；图生视频有风格/构图/节奏预设，节奏支持新建与导入 JSON。",
+  "- 图生视频带首帧参考时，输出比例必须是 Auto（方舟要求跟随首帧）。",
+  "- 素材库在左下角：可上传、新建文件夹、移动/重命名/删除素材；生成结果按画布存到本地磁盘，路径在「设置 → 本地存储」修改。",
+  "- 快捷键：滚轮平移，Ctrl+滚轮缩放，Shift+滚轮横向平移，Ctrl+Z 撤销，Ctrl+Y 重做，Ctrl+D 复制节点，Tab 或 / 打开节点菜单，? 打开快捷键面板，G 新建分组框。",
+  "回答要求：中文，简洁、可执行；给灵感时列 3-5 条具体建议（含提示词、构图、镜头或节奏）；不要编造不存在的功能；不确定时直接说不确定。"
+].join("\n");
+function assistantCanvasContext(){
+  var record=currentCanvasRecord();
+  var counts={},total=0;
+  state.nodes.forEach(function(n){
+    if(n.type==="group")return;
+    total++;
+    counts[n.type]=(counts[n.type]||0)+1;
+  });
+  var parts=["画布「"+((record&&record.name)||"未命名")+"」"];
+  parts.push("节点 "+total+" 个"+(total?"（"+Object.keys(counts).map(function(type){return ((NODETYPES[type]||{}).label||type)+"×"+counts[type];}).join("、")+"）":""));
+  parts.push("连线 "+state.links.length+" 条");
+  var selected=selectedIds.map(nodeById).filter(Boolean);
+  parts.push(selected.length?"选中："+selected.slice(0,6).map(function(n){return n.title||((NODETYPES[n.type]||{}).label||n.type);}).join("、")+"（共"+selected.length+"个）":"当前没有选中节点");
+  return parts.join("；");
+}
+function aiScroll(){
+  if(!aiBodyEl)return;
+  aiBodyEl.scrollTop=aiBodyEl.scrollHeight;
+}
+function aiAppend(role,text){
+  if(!aiBodyEl)return null;
+  var item=el("div","ai-msg "+(role==="user"?"user":role==="error"?"err":"bot"));
+  item.textContent=text;
+  aiBodyEl.appendChild(item);
+  aiScroll();
+  return item;
+}
+function aiRenderWelcome(){
+  if(!aiBodyEl)return;
+  if(aiStore.messages.length)return;
+  var text="我是这个画布的 AI 助手。可以问我：\n· 帮我出几个开场分镜的灵感\n· 这段剧情怎么拆成节点去连\n· 风格/构图/节奏怎么选\n· 图生视频为什么比例只能 Auto";
+  aiAppend("bot",text);
+}
+var AI_QUICK=[
+  ["开场灵感","给我 5 个适合 30 秒短剧的开场分镜灵感，要具体到画面和镜头"],
+  ["拆成节点","我这个画布该怎么把一段剧情拆成节点连起来"],
+  ["节奏建议","9 种节奏预设分别适合什么场景？新手先用哪个"],
+  ["首帧问题","图生视频为什么比例只能是 Auto？带首帧要注意什么"]
+];
+function aiRenderQuick(){
+  if(!aiQuickEl)return;
+  aiQuickEl.innerHTML="";
+  AI_QUICK.forEach(function(pair){
+    var button=el("button");button.type="button";button.textContent=pair[0];
+    button.addEventListener("click",function(){aiSend(pair[1]);});
+    aiQuickEl.appendChild(button);
+  });
+}
+function aiSetBusy(value){
+  aiBusy=!!value;
+  if(aiSendBtn)aiSendBtn.disabled=aiBusy;
+  if(aiInputEl)aiInputEl.disabled=aiBusy;
+}
+async function aiRequest(messages){
+  var base=String(aiStore.baseUrl||"https://api.deepseek.com").replace(/\/+$/,"");
+  var payload={model:aiStore.model||"deepseek-chat",messages:messages,stream:false,temperature:0.7,max_tokens:1400};
+  if(!aiStore.apiKey)throw new Error("请先在 ⚙ 里填写 DeepSeek API Key");
+  if(isDesktopEnv()){
+    var response=await fetch("/infinite-canvas/chat-proxy",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({baseUrl:base,apiKey:aiStore.apiKey,payload:payload})});
+    var data={};
+    try{data=await response.json();}catch(_){}
+    if(!response.ok){
+      var message=data&&data.error&&(data.error.message||data.error);
+      throw new Error(typeof message==="string"&&message?message:("请求失败 HTTP "+response.status));
+    }
+    var choice=data&&data.choices&&data.choices[0];
+    return String((choice&&choice.message&&choice.message.content)||"").trim();
+  }
+  var direct=await fetch(base+"/chat/completions",{method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+aiStore.apiKey},
+    body:JSON.stringify(payload)});
+  var body={};
+  try{body=await direct.json();}catch(_){}
+  if(!direct.ok){
+    var errMsg=body&&body.error&&(body.error.message||body.error);
+    throw new Error(typeof errMsg==="string"&&errMsg?errMsg:("请求失败 HTTP "+direct.status));
+  }
+  var pick=body&&body.choices&&body.choices[0];
+  return String((pick&&pick.message&&pick.message.content)||"").trim();
+}
+async function aiSend(forcedText){
+  if(aiBusy)return;
+  var text=String(forcedText!==undefined?forcedText:(aiInputEl?aiInputEl.value:"")).trim();
+  if(!text)return;
+  if(aiInputEl)aiInputEl.value="";
+  aiAppend("user",text);
+  aiStore.messages.push({role:"user",content:text});
+  if(aiStore.messages.length>24)aiStore.messages=aiStore.messages.slice(-24);
+  aiSetBusy(true);
+  var pending=aiAppend("bot","正在思考…");
+  if(pending)pending.classList.add("typing");
+  try{
+    var messages=[{role:"system",content:AI_GUIDE+"\n\n【"+assistantCanvasContext()+"】"}].concat(aiStore.messages);
+    var answer=await aiRequest(messages);
+    if(pending)pending.remove();
+    if(!answer){
+      aiAppend("error","模型没有返回内容（可能输出额度用在了思考上），可以把问题说得更具体再试。");
+    }else{
+      aiAppend("bot",answer);
+      aiStore.messages.push({role:"assistant",content:answer});
+      if(aiStore.messages.length>24)aiStore.messages=aiStore.messages.slice(-24);
+    }
+  }catch(error){
+    if(pending)pending.remove();
+    aiAppend("error",String(error&&error.message||error));
+    if(aiSettingsEl&&aiSettingsEl.hidden&&/API Key|Key/.test(String(error&&error.message||"")))aiSettingsEl.hidden=false;
+  }finally{
+    aiSetBusy(false);
+    aiScroll();
+  }
+}
+function aiSyncSettings(){
+  var keyEl=document.getElementById("aiKey"),modelEl=document.getElementById("aiModel"),baseEl=document.getElementById("aiBase");
+  var tag=document.getElementById("aiModelTag");
+  if(keyEl)keyEl.value=aiStore.apiKey||"";
+  if(modelEl)modelEl.value=aiStore.model||"deepseek-chat";
+  if(baseEl)baseEl.value=aiStore.baseUrl||"https://api.deepseek.com";
+  if(tag)tag.textContent=(aiStore.model||"deepseek-chat").replace("deepseek-","DS ");
+}
+function openAssistant(){
+  if(!aiPanelEl)return;
+  aiPanelEl.hidden=false;
+  var button=document.querySelector('#barCenter [data-act="assistant"]');
+  if(button)button.classList.add("on");
+  aiSyncSettings();
+  aiRenderQuick();
+  aiRenderWelcome();
+  aiScroll();
+  if(!aiStore.apiKey)aiSettingsEl.hidden=false;
+}
+function closeAssistant(){
+  if(!aiPanelEl)return;
+  aiPanelEl.hidden=true;
+  var button=document.querySelector('#barCenter [data-act="assistant"]');
+  if(button)button.classList.remove("on");
+}
+function toggleAssistant(){
+  if(!aiPanelEl)return;
+  if(aiPanelEl.hidden)openAssistant();else closeAssistant();
+}
+if(document.getElementById("aiClose"))document.getElementById("aiClose").addEventListener("click",closeAssistant);
+if(document.getElementById("aiSettingsBtn"))document.getElementById("aiSettingsBtn").addEventListener("click",function(){
+  aiSettingsEl.hidden=!aiSettingsEl.hidden;
+  if(!aiSettingsEl.hidden)aiSyncSettings();
+});
+if(document.getElementById("aiSave"))document.getElementById("aiSave").addEventListener("click",function(){
+  aiStore.apiKey=String((document.getElementById("aiKey")||{}).value||"").trim();
+  aiStore.model=String((document.getElementById("aiModel")||{}).value||"deepseek-chat");
+  aiStore.baseUrl=String((document.getElementById("aiBase")||{}).value||"https://api.deepseek.com").trim()||"https://api.deepseek.com";
+  saveAiStore();aiSyncSettings();
+  var hint=document.getElementById("aiHint");
+  if(hint)hint.textContent="已保存 · Key 只存在本机";
+  toast("助手设置已保存");
+});
+if(aiSendBtn)aiSendBtn.addEventListener("click",function(){aiSend();});
+if(aiInputEl)aiInputEl.addEventListener("keydown",function(event){
+  if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();aiSend();}
+  if(event.key==="Escape")closeAssistant();
+});
+if(aiBodyEl)aiBodyEl.addEventListener("wheel",function(event){event.stopPropagation();},{passive:true});
+
 function openPreferences(){
   settingsModal.classList.add("on");
   renderSettingsPane(settingsPane);
@@ -5402,7 +5696,8 @@ function openHelp(){
     '<h3>右下工具</h3><ul>'+
     '<li><b>添加节点</b>：在画布中央打开节点类型菜单。</li>'+
     '<li><b>移动工具</b>：切换为抓手后，拖拽任意位置平移画布。</li>'+
-    '<li><b>快捷键</b>：查看全部键盘操作。</li></ul>'+
+    '<li><b>快捷键</b>：查看全部键盘操作。</li>'+
+    '<li><b>AI 助手</b>（… 右侧光球）：接入 DeepSeek，可咨询创作灵感与画布用法；点 ⚙ 填写 API Key，Key 只保存在本机。</li></ul>'+
     '<h3>节点类型</h3><ul>'+
     '<li>文本、图片、视频、图像生成、图生视频、音频生成、合成导出、上传素材；图片/视频/音频节点只从本地或素材库选取素材，不调用模型。</li>'+
     '<li>图像生成支持风格 / 构图 / 配色预设（官方与自定义），会写入生成提示词。</li>'+
@@ -5450,7 +5745,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.2.6";
+var canvasApiVersion="1.2.7";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

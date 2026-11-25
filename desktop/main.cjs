@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, shell, session, net } = require("electron");
 const { spawn } = require("node:child_process");
 const updater = require("./updater.cjs");
 const crypto = require("node:crypto");
@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
 const path = require("node:path");
+const tls = require("node:tls");
 const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 
@@ -121,6 +122,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     try {
+      await applyNetworkConfig();
       const port = await startLocalServer();
       createWindow(port);
     } catch (error) {
@@ -382,7 +384,8 @@ async function forwardProviderRequest(request, response, target) {
   const upstream = transport.request(target, {
     method: request.method,
     headers,
-    timeout: 180000
+    timeout: 180000,
+    agent: proxyAgent()
   }, upstreamResponse => {
     const responseHeaders = {
       "Content-Type": upstreamResponse.headers["content-type"] || "application/octet-stream",
@@ -445,7 +448,8 @@ async function forwardArkRequest(request, response, arkPath) {
     path: "/api/v3" + arkPath,
     method: request.method,
     headers,
-    timeout: 180000
+    timeout: 180000,
+    agent: proxyAgent()
   }, upstreamResponse => {
     response.writeHead(upstreamResponse.statusCode || 502, {
       "Content-Type": upstreamResponse.headers["content-type"] || "application/json",
@@ -463,6 +467,147 @@ async function forwardArkRequest(request, response, arkPath) {
   if (body) upstream.write(body);
   upstream.end();
 }
+
+/* ---------------- 网络 / 代理设置 ---------------- */
+const NETWORK_CONFIG_FILE = path.join(app.getPath("userData"), "network.json");
+const DEFAULT_NETWORK = { mode: "none", protocol: "http", host: "", port: 80, username: "", password: "" };
+let networkConfigCache = null;
+
+function readNetworkConfig() {
+  if (networkConfigCache) return networkConfigCache;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(NETWORK_CONFIG_FILE, "utf8"));
+    networkConfigCache = Object.assign({}, DEFAULT_NETWORK, parsed || {});
+  } catch {
+    networkConfigCache = Object.assign({}, DEFAULT_NETWORK);
+  }
+  return networkConfigCache;
+}
+function writeNetworkConfig(next) {
+  networkConfigCache = Object.assign({}, DEFAULT_NETWORK, next || {});
+  fs.mkdirSync(path.dirname(NETWORK_CONFIG_FILE), { recursive: true });
+  fs.writeFileSync(NETWORK_CONFIG_FILE, JSON.stringify(networkConfigCache, null, 2), "utf8");
+  return networkConfigCache;
+}
+function proxySettingsFor(config) {
+  if (config.mode === "custom" && config.host) {
+    const scheme = config.protocol === "https" ? "https" : "http";
+    return {
+      mode: "fixed_servers",
+      proxyRules: scheme + "://" + config.host + ":" + Number(config.port || 80),
+      proxyBypassRules: "<local>"
+    };
+  }
+  if (config.mode === "system") return { mode: "system" };
+  return { mode: "direct" };
+}
+async function applyNetworkConfig(config) {
+  const target = config || readNetworkConfig();
+  try {
+    await session.defaultSession.setProxy(proxySettingsFor(target));
+  } catch (error) {
+    console.warn("setProxy 失败：", error && error.message);
+  }
+}
+function proxyAuthHeader(config) {
+  if (!config || config.mode !== "custom" || !config.username) return "";
+  return "Basic " + Buffer.from(config.username + ":" + (config.password || "")).toString("base64");
+}
+class ProxyTunnelAgent extends https.Agent {
+  constructor(proxy) {
+    super({ keepAlive: false });
+    this.proxy = proxy;
+  }
+  createConnection(options, callback) {
+    const proxy = this.proxy;
+    const transport = proxy.protocol === "https:" ? https : http;
+    const targetHost = options.host;
+    const targetPort = options.port || 443;
+    const headers = { Host: targetHost + ":" + targetPort };
+    if (proxy.auth) headers["Proxy-Authorization"] = proxy.auth;
+    const connectRequest = transport.request({
+      host: proxy.host,
+      port: proxy.port,
+      method: "CONNECT",
+      path: targetHost + ":" + targetPort,
+      headers,
+      agent: false,
+      timeout: 20000
+    });
+    connectRequest.once("connect", (response, socket) => {
+      if (response.statusCode !== 200) {
+        socket.destroy();
+        callback(new Error("代理拒绝连接（HTTP " + response.statusCode + "）"));
+        return;
+      }
+      const secure = tls.connect({ socket, servername: options.servername || targetHost });
+      secure.once("secureConnect", () => callback(null, secure));
+      secure.once("error", error => callback(error));
+    });
+    connectRequest.once("timeout", () => connectRequest.destroy(new Error("连接代理超时")));
+    connectRequest.once("error", error => callback(error));
+    connectRequest.end();
+  }
+}
+function proxyAgent() {
+  const config = readNetworkConfig();
+  if (config.mode !== "custom" || !config.host) return undefined;
+  return new ProxyTunnelAgent({
+    protocol: config.protocol === "https" ? "https:" : "http:",
+    host: config.host,
+    port: Number(config.port || 80),
+    auth: proxyAuthHeader(config)
+  });
+}
+function networkTest(targetUrl) {
+  return new Promise(resolve => {
+    const started = Date.now();
+    let settled = false;
+    const finish = payload => {
+      if (settled) return;
+      settled = true;
+      resolve(Object.assign({ target: targetUrl, ms: Date.now() - started }, payload));
+    };
+    let request;
+    try {
+      request = net.request({ url: targetUrl, method: "GET", redirect: "follow" });
+    } catch (error) {
+      finish({ ok: false, error: String(error && error.message || error) });
+      return;
+    }
+    const timer = setTimeout(() => {
+      try { request.abort(); } catch {}
+      finish({ ok: false, error: "测试超时（15 秒）" });
+    }, 15000);
+    request.on("response", response => {
+      response.on("data", () => {});
+      response.on("end", () => {
+        clearTimeout(timer);
+        const status = response.statusCode || 0;
+        finish({ ok: status >= 200 && status < 400, status });
+      });
+      response.on("error", error => {
+        clearTimeout(timer);
+        finish({ ok: false, error: String(error && error.message || error) });
+      });
+    });
+    request.on("error", error => {
+      clearTimeout(timer);
+      finish({ ok: false, error: String(error && error.message || error) });
+    });
+    request.end();
+  });
+}
+app.on("login", (event, webContents, details, authInfo, callback) => {
+  if (authInfo && authInfo.isProxy) {
+    const config = readNetworkConfig();
+    if (config.mode === "custom" && config.username) {
+      event.preventDefault();
+      callback(config.username, config.password || "");
+      return;
+    }
+  }
+});
 
 /* ---------------- 本地素材 / 生成历史存储 ---------------- */
 const MAX_STORAGE_SAVE_BYTES = 512 * 1024 * 1024;
@@ -518,7 +663,8 @@ function downloadRemoteFile(url, target) {
     const request = https.get(url, {
       headers: { "User-Agent": "InfiniteCanvas-Desktop" },
       family: 4,
-      timeout: 60000
+      timeout: 60000,
+      agent: proxyAgent()
     }, response => {
       const status = response.statusCode || 0;
       if ([301, 302, 303, 307, 308].indexOf(status) >= 0 && response.headers.location) {
@@ -703,8 +849,8 @@ async function handleRequest(request, response, port) {
   }
 
   if (pathname === PROVIDER_PROXY_PATH) {
-    if (request.method !== "POST") {
-      sendJson(response, 405, { error: { message: "音频接口转发仅支持 POST" } });
+    if (["GET", "HEAD", "POST"].indexOf(request.method) < 0) {
+      sendJson(response, 405, { error: { message: "接口转发仅支持 GET / POST" } });
       return;
     }
     const expectedProxyOrigin = "http://127.0.0.1:" + port;
@@ -754,7 +900,8 @@ async function handleRequest(request, response, port) {
             "Authorization": "Bearer " + String(body.apiKey || ""),
             "Accept": "application/json"
           },
-          timeout: 120000
+          timeout: 120000,
+          agent: proxyAgent()
         }, upstreamResponse => {
           const chunks = [];
           upstreamResponse.on("data", chunk => chunks.push(chunk));
@@ -821,6 +968,67 @@ async function handleRequest(request, response, port) {
       return;
     }
     sendJson(response, 404, { error: { message: "找不到更新服务" } });
+    return;
+  }
+
+  if (pathname === "/infinite-canvas/network" || pathname === "/infinite-canvas/network/test") {
+    if ((request.headers.origin && request.headers.origin !== expectedOrigin)
+      || (request.headers.referer && !request.headers.referer.startsWith(expectedOrigin + "/"))) {
+      sendJson(response, 403, { error: { message: "仅允许桌面画布访问网络设置" } });
+      return;
+    }
+    try {
+      if (pathname === "/infinite-canvas/network/test") {
+        if (request.method !== "POST") {
+          sendJson(response, 405, { error: { message: "网络测试仅支持 POST" } });
+          return;
+        }
+        const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+        const target = String(body.target || "https://www.baidu.com/robots.txt");
+        const parsed = new URL(target);
+        if (["http:", "https:"].indexOf(parsed.protocol) < 0) {
+          sendJson(response, 400, { error: { message: "只支持 http/https 测试地址" } });
+          return;
+        }
+        const result = await networkTest(target);
+        sendJson(response, 200, result);
+        return;
+      }
+      if (request.method === "GET") {
+        const config = readNetworkConfig();
+        sendJson(response, 200, {
+          mode: config.mode,
+          protocol: config.protocol,
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          hasPassword: !!config.password
+        });
+        return;
+      }
+      if (request.method === "POST") {
+        const body = JSON.parse((await readRequestBody(request)).toString("utf8") || "{}");
+        const mode = ["none", "system", "custom"].indexOf(String(body.mode)) >= 0 ? String(body.mode) : "none";
+        const previous = readNetworkConfig();
+        const next = {
+          mode,
+          protocol: String(body.protocol) === "https" ? "https" : "http",
+          host: String(body.host || "").trim(),
+          port: Math.max(1, Math.min(65535, Number(body.port) || 80)),
+          username: String(body.username || ""),
+          password: body.password === undefined ? previous.password : String(body.password || "")
+        };
+        if (mode === "custom" && !next.host) throw Object.assign(new Error("请填写代理服务器地址"), { statusCode: 400 });
+        writeNetworkConfig(next);
+        await applyNetworkConfig(next);
+        sendJson(response, 200, { ok: true, mode: next.mode });
+        return;
+      }
+      sendJson(response, 405, { error: { message: "不支持的网络设置请求" } });
+    } catch (error) {
+      if (!response.headersSent) sendJson(response, error.statusCode || 500, { error: { message: error.message || "网络设置失败" } });
+      else response.destroy(error);
+    }
     return;
   }
 

@@ -998,6 +998,7 @@
     color:#c3c7cf;font-size:11.5px;cursor:pointer}
   #inspector .ie-audio-chip:hover{border-color:#4a4d55;color:#fff}
   #inspector .ie-audio-foot{display:flex;align-items:center;gap:8px}
+  #inspector select,.net-custom select{color-scheme:dark}
   #inspector .ie-audio-model{flex:0 1 190px;height:32px;border:1px solid #303238;border-radius:8px;background:#1b1c21;
     color:#e6e7ea;font-size:12px;padding:0 8px}
   #inspector .ie-audio-out{height:32px;padding:0 10px;border:1px solid #303238;border-radius:8px;background:#1b1c21;
@@ -1062,6 +1063,23 @@
   .sm-pane h4{margin:0 0 6px;font-size:13.5px;color:#eef0f4}
   .sm-pane p{margin:0 0 14px;font-size:12.5px;color:#9a9ea7;line-height:1.8}
   .sm-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #2c2e34;border-radius:10px;margin-bottom:10px;background:#1a1b20}
+  .net-radios{display:flex;flex-wrap:wrap;gap:18px;margin:4px 0 16px;font-size:12.5px;color:#c9ccd3}
+  .net-radios label{display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+  .net-radios input{accent-color:#2c9cb8;cursor:pointer}
+  .net-custom{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:16px}
+  .net-custom[hidden]{display:none}
+  .net-custom label{display:grid;gap:5px;font-size:12px;color:#8d939c}
+  .net-custom input,.net-custom select{height:32px;padding:0 9px;border:1px solid #303238;border-radius:8px;
+    background:#101216;color:#e6e7ea;font-size:12.5px;outline:none;box-sizing:border-box;color-scheme:dark}
+  .net-custom input:focus,.net-custom select:focus{border-color:#2c9cb8}
+  .net-actions{display:flex;align-items:center;gap:10px;font-size:12px;color:#7f8792}
+  .net-actions span{flex:1;word-break:break-all}
+  .net-actions button{height:32px;padding:0 16px;border-radius:9px;font-size:12.5px;cursor:pointer}
+  .net-actions .ghost{border:1px solid #34363c;background:#1b1c21;color:#c3c7cf}
+  .net-actions .primary{border:1px solid #2c9cb8;background:#147d98;color:#fff}
+  .net-actions .primary:hover{background:#1790ae}
+  .net-result-ok{color:#5fd8a8}
+  .net-result-bad{color:#ff8d97}
   .sm-row .sm-row-text{flex:1;min-width:0}
   .sm-row b{display:block;font-size:12.5px;color:#e2e4e8;font-weight:600;margin-bottom:3px}
   .sm-row small{display:block;font-size:11.5px;color:#8b8e97}
@@ -1210,6 +1228,7 @@
         <button data-pane="api" type="button">API 接入</button>
         <button data-pane="data" type="button">数据与画布</button>
         <button data-pane="storage" type="button">本地存储</button>
+        <button data-pane="network" type="button">网络设置</button>
         <button data-pane="about" type="button">关于</button>
       </nav>
       <div class="sm-pane" id="smPane"></div>
@@ -1310,7 +1329,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.23
+   AI漫剧节点工作台 v4.24
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -1448,7 +1467,7 @@ function makeHttp(spec){
     var cfg=Object.assign({},spec.defaults||{},ctx.cfg||{});
     var ep=await spec.endpoint(ctx,cfg);
     if(ctx.onProgress)ctx.onProgress(6,"已提交请求，等待服务响应…");
-    var r=await fetch(ep.url,{method:ep.method||"POST",headers:ep.headers||{"Content-Type":"application/json"},body:ep.body});
+    var r=await providerHttpFetch(ep.url,{method:ep.method||"POST",headers:ep.headers||{"Content-Type":"application/json"},body:ep.body});
     if(!r.ok) throw new Error("HTTP "+r.status+"："+(await r.text()).slice(0,300));
     if(ctx.onProgress)ctx.onProgress(12,"服务已受理，开始生成…");
     var j=await r.json();
@@ -1460,7 +1479,7 @@ function makeHttp(spec){
         await sleep(iv);
         if(ctx.onProgress)ctx.onProgress(12+Math.round((i/Math.max(1,maxP))*82),"生成中，已等待 "+Math.round((i+1)*iv/1000)+" 秒…");
         var pu=spec.pollUrl(out.taskId,ctx,cfg);
-        var pr=await fetch(pu.url,{method:"GET",headers:pu.headers||{}});
+        var pr=await providerHttpFetch(pu.url,{method:"GET",headers:pu.headers||{}});
         var pj=await pr.json();
         var st=spec.pollParse(pj,ctx,cfg);
         if(st.status==="done") return st.result;
@@ -1479,6 +1498,12 @@ function providerProxyUrl(url){
 }
 async function providerFetch(url,options){
   return fetch(providerProxyUrl(url),options||{});
+}
+function providerHttpFetch(url,options){
+  var text=String(url||"");
+  if(!isDesktopProxyLocation())return fetch(url,options);
+  if(text.indexOf("ark.cn-beijing.volces.com")>=0)return fetch(url,options);
+  return providerFetch(url,options);
 }
 function miniUUID(){
   if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID();
@@ -1665,6 +1690,14 @@ function modelsForSlot(pid,slot){
   if(selected&&!usable.some(function(model){return model.id===selected;}))usable.unshift({id:selected,label:selected,domain:"已保存",kinds:[slot.kind],legacy:true});
   return usable;
 }
+function shortModelLabel(value){
+  var id=String(value||"").trim();
+  if(!id)return "";
+  var text=id.replace(/^doubao[-_ ]?/i,"");
+  text=text.replace(/[-_ ]\d{6}$/,"");
+  text=text.replace(/-(\d+)-(\d+)(?=-|$)/g,"-$1.$2");
+  return text||id;
+}
 function modelChoicesForNode(pid,kind){
   var p=PROVIDERS[pid],slot=p&&p.modelSlots&&p.modelSlots.filter(function(s){return s.kind===kind;})[0];
   return slot?modelsForSlot(pid,slot):[];
@@ -1716,6 +1749,11 @@ function oaiImageSpec(id,label,baseUrl,defModel,meta){
 registerProvider(makeHttp(oaiImageSpec("openai","OpenAI","https://api.openai.com","gpt-image-1",{
   icon:"OA",accent:"#111827",description:"读取 OpenAI 或兼容服务提供的模型列表，并选择图像生成模型。"
 })));
+if(PROVIDERS.openai&&PROVIDERS.openai.models&&Array.isArray(PROVIDERS.openai.models.image)){
+  ["gpt-image-1","gpt-image-1-mini","gpt-4o-image","dall-e-3"].forEach(function(id){
+    if(!PROVIDERS.openai.models.image.some(function(item){return (item.id||item)===id;}))PROVIDERS.openai.models.image.push({id:id,label:id});
+  });
+}
 registerProvider(makeHttp(oaiImageSpec("siliconflow","硅基流动 SiliconFlow","https://api.siliconflow.cn","Kwai-Kolors/Kolors",{
   icon:"硅",accent:"#2563eb",description:"读取硅基流动账号可用模型，并选择图像生成模型。"
 })));
@@ -1821,6 +1859,53 @@ registerProvider(makeHttp({
     if(s==="failed"||s==="error")return {status:"error",message:(j.error&&j.error.message)||"生成失败"};
     return {status:"pending"};}
 }));
+
+function geminiInlinePart(value){
+  var text=String(value||"");
+  if(/^data:/i.test(text)){
+    var comma=text.indexOf(",");
+    var meta=text.slice(5,comma),mime=meta.split(";")[0]||"image/png";
+    return {inline_data:{mime_type:mime,data:text.slice(comma+1)}};
+  }
+  return {file_data:{file_uri:text}};
+}
+registerProvider({
+  id:"google",label:"Google Gemini（Nano Banana）",kinds:["image"],
+  icon:"G",accent:"#4285f4",group:"cloud",testPath:"/v1beta/models",
+  description:"Google Gemini 原生图像生成，对应 Nano Banana / Nano Banana Pro。",
+  help:"在 Google AI Studio 创建 API Key（AIza 开头）。Base URL 默认 https://generativelanguage.googleapis.com；可用模型：gemini-2.5-flash-image（Nano Banana）、gemini-3-pro-image-preview（Nano Banana Pro）。",
+  defaults:{baseUrl:"https://generativelanguage.googleapis.com",apiKey:"",model_image:"gemini-2.5-flash-image"},
+  fields:[{k:"baseUrl",l:"Base URL"},{k:"apiKey",l:"API Key",pw:1}],
+  modelSlots:[{kind:"image",key:"model_image",label:"图像生成"}],
+  models:{image:[
+    {id:"gemini-2.5-flash-image",label:"Nano Banana"},
+    {id:"gemini-2.5-flash-image-preview",label:"Nano Banana Preview"},
+    {id:"gemini-3-pro-image-preview",label:"Nano Banana Pro"}
+  ]},
+  async run(ctx){
+    if(ctx.kind!=="image")throw new Error("Google 适配器目前只支持图像生成");
+    var cfg=Object.assign({},this.defaults,ctx.cfg||{});
+    var apiKey=String(cfg.apiKey||"").trim();
+    if(!apiKey)throw new Error("请先填写 Google API Key");
+    var model=ctx.model||cfg.model_image||"gemini-2.5-flash-image";
+    var base=String(cfg.baseUrl||this.defaults.baseUrl).replace(/\/+$/,"");
+    var parts=[{text:String(ctx.prompt||"")}];
+    var reference=imageReference(ctx);
+    if(reference)parts.push(geminiInlinePart(videoImageUrl(reference)));
+    var response=await providerFetch(base+"/v1beta/models/"+encodeURIComponent(model)+":generateContent",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},
+      body:JSON.stringify({contents:[{role:"user",parts:parts}]})
+    });
+    if(!response.ok)throw new Error("HTTP "+response.status+"："+(await response.text()).slice(0,400));
+    var data=await response.json();
+    var candidate=(data.candidates&&data.candidates[0])||{};
+    var responseParts=(candidate.content&&candidate.content.parts)||[];
+    var image=responseParts.map(function(part){return part.inlineData||part.inline_data;}).filter(Boolean)[0];
+    if(!image||!image.data)throw new Error("Gemini 没有返回图片（安全策略或额度限制）："+(candidate.finishReason||"unknown"));
+    return {kind:"image",b64:image.data,note:"Google Gemini · "+model};
+  }
+});
 
 registerProvider({
   id:"audio-hub",label:"音频 API（OpenAI 兼容）",kinds:["audio"],
@@ -3577,10 +3662,10 @@ function openInspector(n){
     var defaultOption=el("option");defaultOption.value="";
     var providerCfg=state.settings.providers[n.provider]||{};
     var defaultModel=providerCfg[modelSlot.key]||(modelProvider.defaults&&modelProvider.defaults[modelSlot.key])||"";
-    defaultOption.textContent="默认模型"+(defaultModel?" · "+defaultModel:"");model.appendChild(defaultOption);
+    defaultOption.textContent="默认模型"+(defaultModel?" · "+shortModelLabel(defaultModel):"");model.appendChild(defaultOption);
     var modelChoices=modelChoicesForNode(n.provider,kind);
     if(n.model&&!modelChoices.some(function(choice){return choice.id===n.model;}))modelChoices.unshift({id:n.model,label:n.model,legacy:true});
-    modelChoices.forEach(function(choice){var option=el("option");option.value=choice.id;option.textContent=choice.label===choice.id?choice.id:choice.label+" · "+choice.id;
+    modelChoices.forEach(function(choice){var option=el("option");option.value=choice.id;option.textContent=shortModelLabel(choice.id);option.title=choice.id;
       option.title=choice.domain||choice.id;if(choice.id===n.model)option.selected=true;model.appendChild(option);});
     if(!n.model)defaultOption.selected=true;
     model.addEventListener("change",function(){n.model=model.value;saveSoon();if(n.type==="video")openInspector(n);});
@@ -3590,7 +3675,7 @@ function openInspector(n){
       model=el("select","ie-select ie-model");model.title="选择已获取的音频模型；留空使用默认";
       var audioDefaultOption=el("option");audioDefaultOption.value="";audioDefaultOption.textContent="默认模型";model.appendChild(audioDefaultOption);
       if(n.model&&!audioChoices.some(function(choice){return choice.id===n.model;}))audioChoices.unshift({id:n.model,label:n.model});
-      audioChoices.forEach(function(choice){var option=el("option");option.value=choice.id;option.textContent=choice.label===choice.id?choice.id:choice.label+" · "+choice.id;if(choice.id===n.model)option.selected=true;model.appendChild(option);});
+      audioChoices.forEach(function(choice){var option=el("option");option.value=choice.id;option.textContent=shortModelLabel(choice.id);option.title=choice.id;if(choice.id===n.model)option.selected=true;model.appendChild(option);});
       if(!n.model)audioDefaultOption.selected=true;
       model.addEventListener("change",function(){n.model=model.value;saveSoon();});
     }else{
@@ -4539,8 +4624,8 @@ function renderProviderDetail(pid){
         else choices.forEach(function(choice){
           var pick=el("button","api-model-choice"+(choice.id===chosen?" on":""));pick.type="button";pick.setAttribute("aria-pressed",choice.id===chosen?"true":"false");
           var star=el("span","api-model-star");star.textContent=choice.id===chosen?"★":"☆";pick.appendChild(star);
-          pick.appendChild(document.createTextNode(choice.label&&choice.label!==choice.id?choice.label+" · "+choice.id:choice.id));
-          pick.title=(choice.label&&choice.label!==choice.id?choice.label+" · ":"")+(choice.domain?choice.domain+" · ":"")+choice.id;
+          pick.appendChild(document.createTextNode(shortModelLabel(choice.id)));
+          pick.title=(choice.domain?choice.domain+" · ":"")+choice.id;
           pick.addEventListener("click",function(){var current=state.settings.providers[pid]||{};current[slot.key]=choice.id;state.settings.providers[pid]=current;save();renderProviderDetail(pid);});
           list.appendChild(pick);
         });
@@ -5185,7 +5270,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.3.1";
+var APP_VERSION="1.3.2";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5899,6 +5984,100 @@ function openPreferences(){
   renderSettingsPane(settingsPane);
 }
 function closePreferences(){settingsModal.classList.remove("on");}
+var networkConfig={mode:"none",protocol:"http",host:"",port:80,username:"",hasPassword:false,available:false};
+async function loadNetworkConfig(){
+  if(!isDesktopEnv())return;
+  try{
+    var response=await fetch("/infinite-canvas/network");
+    if(!response.ok)return;
+    var data=await response.json();
+    networkConfig={
+      mode:data.mode||"none",protocol:data.protocol||"http",host:data.host||"",
+      port:Number(data.port)||80,username:data.username||"",hasPassword:!!data.hasPassword,available:true
+    };
+  }catch(_){}
+}
+async function saveNetworkConfig(config){
+  var payload=Object.assign({},config);
+  if(!payload.password)delete payload.password;
+  var response=await fetch("/infinite-canvas/network",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  var data={};
+  try{data=await response.json();}catch(_){}
+  if(!response.ok)throw new Error((data.error&&data.error.message)||"网络设置保存失败");
+  return data;
+}
+async function testNetworkConnection(target){
+  var response=await fetch("/infinite-canvas/network/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({target:target||"https://www.baidu.com/robots.txt"})});
+  var data={};
+  try{data=await response.json();}catch(_){}
+  if(!response.ok)throw new Error((data.error&&data.error.message)||"网络测试失败");
+  return data;
+}
+function renderNetworkPane(smPane){
+  var netReady=isDesktopEnv();
+  if(netReady&&!networkConfig.available){
+    loadNetworkConfig().then(function(){if(settingsPane==="network")renderSettingsPane("network");});
+  }
+  var radios=[["none","不使用代理"],["system","使用系统代理设置"],["custom","自定义代理"]];
+  smPane.innerHTML='<h4>网络设置</h4><p>控制服务端 AI、媒体等网络请求，保存后生效。'+(netReady?"":"（仅桌面版可用，网页版由浏览器管理网络）")+'</p>'+
+    '<div class="net-radios">'+radios.map(function(pair){
+      return '<label><input type="radio" name="netmode" value="'+pair[0]+'"'+(networkConfig.mode===pair[0]?" checked":"")+(netReady?"":" disabled")+'> '+pair[1]+'</label>';
+    }).join("")+'</div>'+
+    '<div class="net-custom" id="netCustom"'+(networkConfig.mode==="custom"?"":" hidden")+'>'+
+      '<label>代理协议<select id="netProtocol"><option value="http"'+(networkConfig.protocol==="http"?" selected":"")+'>HTTP 代理</option><option value="https"'+(networkConfig.protocol==="https"?" selected":"")+'>HTTPS 代理</option></select></label>'+
+      '<label>服务器<input id="netHost" value="'+esc(networkConfig.host||"")+'" placeholder="请输入 IP 或域名"></label>'+
+      '<label>端口<input id="netPort" type="number" min="1" max="65535" value="'+(networkConfig.port||80)+'" placeholder="80"></label>'+
+      '<label>用户名<input id="netUser" value="'+esc(networkConfig.username||"")+'" placeholder="可选"></label>'+
+      '<label>密码<input id="netPass" type="password" placeholder="'+(networkConfig.hasPassword?"已保存，留空不修改":"可选")+'"></label>'+
+    '</div>'+
+    '<div class="net-actions"><span id="netResult">测试地址：https://www.baidu.com/robots.txt</span>'+
+      '<button class="ghost" id="netTest" type="button"'+(netReady?"":" disabled")+'>测试</button>'+
+      '<button class="primary" id="netSave" type="button"'+(netReady?"":" disabled")+'>确定</button></div>';
+  if(!netReady)return;
+  function currentForm(){
+    var checked=document.querySelector('input[name="netmode"]:checked');
+    return {
+      mode:checked?checked.value:"none",
+      protocol:(document.getElementById("netProtocol")||{}).value||"http",
+      host:String((document.getElementById("netHost")||{}).value||"").trim(),
+      port:Number((document.getElementById("netPort")||{}).value)||80,
+      username:String((document.getElementById("netUser")||{}).value||""),
+      password:String((document.getElementById("netPass")||{}).value||"")
+    };
+  }
+  function toggleCustom(){
+    var box=document.getElementById("netCustom");
+    if(box)box.hidden=currentForm().mode!=="custom";
+  }
+  document.querySelectorAll('input[name="netmode"]').forEach(function(input){input.addEventListener("change",toggleCustom);});
+  document.getElementById("netSave").addEventListener("click",async function(){
+    try{
+      await saveNetworkConfig(currentForm());
+      await loadNetworkConfig();
+      renderSettingsPane("network");
+      toast("网络设置已保存");
+    }catch(error){toast(error.message||"保存失败");}
+  });
+  document.getElementById("netTest").addEventListener("click",async function(){
+    var result=document.getElementById("netResult");
+    result.className="";result.textContent="正在测试…";
+    try{
+      await saveNetworkConfig(currentForm());
+      await loadNetworkConfig();
+      var data=await testNetworkConnection("https://www.baidu.com/robots.txt");
+      if(data.ok){
+        result.className="net-result-ok";
+        result.textContent="连通正常 · HTTP "+(data.status||"")+" · "+(data.ms||0)+"ms";
+      }else{
+        result.className="net-result-bad";
+        result.textContent="失败："+(data.error||("HTTP "+(data.status||"未知")));
+      }
+    }catch(error){
+      result.className="net-result-bad";
+      result.textContent="失败："+(error.message||"测试失败");
+    }
+  });
+}
 function renderSettingsPane(pane){
   settingsPane=pane;
   document.querySelectorAll(".sm-nav button").forEach(function(button){button.classList.toggle("on",button.dataset.pane===pane);});
@@ -5932,6 +6111,7 @@ function renderSettingsPane(pane){
     document.getElementById("smClear").addEventListener("click",function(){if(confirm("清空当前画布？可使用撤销恢复")){checkpoint();state.nodes=[];state.links=[];selectedLinkId=null;select(null);renderAll();save();closePreferences();}});
     return;
   }
+  if(pane==="network"){renderNetworkPane(smPane);return;}
   if(pane==="storage"){
     if(!storageConfig.available&&isDesktopEnv()){
       loadStorageConfig().then(function(){if(settingsPane==="storage")renderSettingsPane("storage");});
@@ -6025,6 +6205,8 @@ function openHelp(){
     '<li>常见报错已翻译成中文：「比例不合法」「时长不支持」「清晰度不支持」「音频不支持」「模型未开通」「Key 无效」会直接提示怎么改。</li></ul>'+
     '<h3>生成与配置</h3><ul>'+
     '<li>在左上角「设置 → API 接入」配置服务商与默认线路，未配置时运行会提示先选择服务商。</li>'+
+    '<li>「设置 → 网络设置」可选 不使用代理 / 使用系统代理 / 自定义代理（HTTP 或 HTTPS，支持账号密码），保存后对 AI 与媒体请求生效，可点「测试」验证连通。</li>'+
+    '<li>海外生图可选用 Google Gemini（Nano Banana 系列）或 OpenAI（gpt-image-1 / GPT-4o 图像），在 API 接入里填对应 Key 即可；海外服务通常需要代理，可先在上面配好代理再测试。</li>'+
     '<li>节点运行中显示进度条与百分比，同一节点同时只会发起一次生成。</li>'+
     '<li>「生成历史」打开的是媒体库：按 本项目 / 全部项目 和 图像 / 视频 / 音频 分类浏览真实生成结果，点素材可定位节点、打开文件位置或复制路径。</li></ul>'+
     '<h3>数据</h3><ul>'+
@@ -6066,7 +6248,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.3.1";
+var canvasApiVersion="1.3.2";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

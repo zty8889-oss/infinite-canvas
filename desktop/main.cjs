@@ -319,7 +319,8 @@ function forwardModelListRequest(request, response, target) {
   const upstream = transport.request(target, {
     method: "GET",
     headers,
-    timeout: 18000
+    timeout: 18000,
+    agent: proxyAgent()
   }, upstreamResponse => {
     const chunks = [];
     let length = 0;

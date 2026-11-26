@@ -10,7 +10,7 @@ const tls = require("node:tls");
 const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 
-const PRODUCT_NAME = "无限画布";
+const PRODUCT_NAME = "镜界 · Mirrorboard";
 const DEFAULT_PORT = 43621;
 const MAX_BODY_BYTES = 64 * 1024 * 1024;
 const MAX_MEDIA_BYTES = 512 * 1024 * 1024;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>AI漫剧节点工作台 · Node Canvas</title>
+<title>镜界 · Mirrorboard</title>
 <style>
   :root{
     --grid:#e7ebe8; --grid2:#d7ded9; --bg:#f1f3f1; --panel:#fbfcfb; --line:#d9dfdc;
@@ -1392,7 +1392,7 @@
 (function(){
 "use strict";
 /* =========================================================================
-   AI漫剧节点工作台 v4.28
+   镜界 Mirrorboard v4.29
    - 科技线框图标与画布快捷键系统
    - 多厂商可插拔 API 适配层（Providers 注册表）
    - 新增：节点底部编辑器 / 向下生成卡片 / 独立服务商接入中心
@@ -4979,6 +4979,7 @@ function save(){
     var payload={format:CANVAS_FORMAT,savedAt:new Date().toISOString(),nodes:state.nodes,links:state.links,view:state.view,settings:state.settings,history:(state.history||[]).slice(0,60)};
     localStorage.setItem(STORE_KEY,JSON.stringify(payload));
     syncCurrentCanvas();persistCanvasBook();
+    try{indexAssetsFromState();}catch(_){}
     return true;
   }catch(e){toast("本机存储空间不足，请导出工作流备份并移除大素材");return false;}
 }
@@ -5535,7 +5536,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.3.6";
+var APP_VERSION="1.3.7";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -5772,16 +5773,94 @@ function loadAssetStore(){
 function saveAssetStore(){try{localStorage.setItem(ASSET_FOLDER_KEY,JSON.stringify(assetStore));}catch(_){toast("本机存储空间不足，素材库分组未保存");}}
 loadAssetStore();
 
+/* ---- 素材索引：与画布/节点解耦，删除节点不会丢素材 ---- */
+var ASSET_INDEX_KEY="ic-assets-v1",ASSET_HIDDEN_KEY="ic-assets-hidden-v1";
+var assetIndex=[],assetHidden={};
+function mediaDataUrl(output){
+  if(!output)return "";
+  if(output.url)return output.url;
+  if(!output.b64)return "";
+  var raw=String(output.b64);
+  if(/^data:/i.test(raw))return raw;
+  var mime=output.kind==="video"?"video/mp4":output.kind==="audio"?"audio/mpeg":"image/png";
+  return "data:"+mime+";base64,"+raw;
+}
+function loadAssetIndex(){
+  try{
+    var list=JSON.parse(localStorage.getItem(ASSET_INDEX_KEY)||"[]");
+    if(Array.isArray(list))assetIndex=list.filter(function(item){return item&&item.url&&item.kind;});
+  }catch(_){assetIndex=[];}
+  try{
+    var hidden=JSON.parse(localStorage.getItem(ASSET_HIDDEN_KEY)||"[]");
+    if(Array.isArray(hidden))hidden.forEach(function(url){assetHidden[url]=1;});
+  }catch(_){}
+}
+function saveAssetIndex(){
+  try{localStorage.setItem(ASSET_INDEX_KEY,JSON.stringify(assetIndex));}
+  catch(_){
+    assetIndex=assetIndex.slice(0,Math.max(20,Math.floor(assetIndex.length/2)));
+    try{localStorage.setItem(ASSET_INDEX_KEY,JSON.stringify(assetIndex));}catch(__){}
+  }
+  try{localStorage.setItem(ASSET_HIDDEN_KEY,JSON.stringify(Object.keys(assetHidden).slice(-400)));}catch(_){}
+}
+function addAssetRecord(node,output){
+  if(!node||!output)return false;
+  var kind=output.kind;
+  if(["image","video","audio"].indexOf(kind)<0)return false;
+  var url=mediaDataUrl(output);
+  if(!url||assetHidden[url])return false;
+  if(assetIndex.some(function(item){return item.url===url;}))return false;
+  var record=canvasRecordById(canvasBook.current);
+  assetIndex.unshift({
+    id:"a"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    kind:kind,url:url,
+    title:node.title||((NODETYPES[node.type]||{}).label)||"素材",
+    canvasId:canvasBook.current,canvasName:(record&&record.name)||"画布",
+    nodeId:node.id,type:node.type,generated:node.type!=="upload",
+    savedPath:node.savedPath||"",at:Date.now()
+  });
+  if(assetIndex.length>400)assetIndex.length=400;
+  return true;
+}
+function indexAssetsFromState(){
+  var changed=false;
+  state.nodes.forEach(function(node){
+    var output=node.output;if(!output)return;
+    if(Array.isArray(output.images))output.images.forEach(function(item){if(addAssetRecord(node,item))changed=true;});
+    if(Array.isArray(output.videos))output.videos.forEach(function(item){if(addAssetRecord(node,item))changed=true;});
+    if(output.kind&&addAssetRecord(node,output))changed=true;
+  });
+  if(changed)saveAssetIndex();
+}
+function removeAssetFromIndex(url){
+  if(!url)return;
+  assetHidden[url]=1;
+  assetIndex=assetIndex.filter(function(item){return item.url!==url;});
+  saveAssetIndex();
+}
+loadAssetIndex();
 function assetItems(){
   syncCurrentCanvas();
-  var items=[];
+  var items=[],seen=Object.create(null);
+  assetIndex.forEach(function(record){
+    if(seen[record.url])return;
+    seen[record.url]=1;
+    items.push({
+      nodeId:record.nodeId,canvasId:record.canvasId,canvasName:record.canvasName||"画布",
+      title:record.title||"素材",kind:record.kind,url:record.url,
+      folderId:assetStore.map[record.nodeId]||"",
+      generated:!!record.generated,savedPath:record.savedPath||"",
+      note:"",fromIndex:true,at:record.at||0
+    });
+  });
   canvasBook.items.forEach(function(canvas){
     (canvas.nodes||[]).forEach(function(n){
       var output=n.output||{},kind=output.kind;
       if(!kind)return;
       if(["image","video","audio"].indexOf(kind)<0)return;
-      var url=output.url||(output.b64?("data:image/png;base64,"+output.b64):"");
-      if(!url)return;
+      var url=mediaDataUrl(output);
+      if(!url||seen[url])return;
+      seen[url]=1;
       items.push({
         nodeId:n.id,canvasId:canvas.id,canvasName:canvas.name,
         title:n.title||(NODETYPES[n.type]||{}).label||"素材",
@@ -5794,6 +5873,7 @@ function assetItems(){
   });
   return items;
 }
+
 function assetFiltered(items){
   var q=assetState.query.trim().toLowerCase();
   return items.filter(function(item){
@@ -5966,7 +6046,7 @@ function openAssetItemMenu(x,y,item){
     closeAssetLibrary();
     if(item.canvasId!==canvasBook.current)switchCanvas(item.canvasId);
     var node=nodeById(item.nodeId);
-    if(!node){toast("这个节点已经不在了");return;}
+    if(!node){toast("原节点或画布已删除，素材仍保留在素材库");return;}
     select(node.id);
     state.view.x=innerWidth/2-(node.x+(node.w||240)/2)*state.view.s;
     state.view.y=innerHeight/2-(node.y+(node.h||200)/2)*state.view.s;
@@ -5984,13 +6064,21 @@ function openAssetItemMenu(x,y,item){
   add("重命名",async function(){
     var name=await askText("重命名素材",item.title);
     if(!name)return;
-    updateNodeInCanvas(item.canvasId,item.nodeId,function(n){n.title=name;});
+    assetIndex.forEach(function(record){if(record.url===item.url)record.title=name;});
+    saveAssetIndex();
+    if(nodeById(item.nodeId))updateNodeInCanvas(item.canvasId,item.nodeId,function(n){n.title=name;});
     renderAssetLibrary();
   });
-  add("删除",function(){
-    if(!confirm("删除素材「"+item.title+"」？"))return;
+  add("从素材库移除",function(){
+    if(!confirm("从素材库移除「"+item.title+"」？画布上的节点不会被删除。"))return;
+    removeAssetFromIndex(item.url);
+    delete assetStore.map[item.nodeId];saveAssetStore();
+    renderAssetLibrary();toast("已从素材库移除");
+  },true);
+  if(nodeById(item.nodeId))add("删除对应节点",function(){
+    if(!confirm("删除画布上对应的节点？素材仍会保留在素材库。"))return;
     removeNodeFromCanvas(item.canvasId,item.nodeId);
-    delete assetStore.map[item.nodeId];saveAssetStore();renderAssetLibrary();toast("素材已删除");
+    renderAssetLibrary();toast("节点已删除，素材已保留");
   },true);
   alMenu.classList.add("on");
   alMenu.style.left=Math.max(8,Math.min(x,innerWidth-190))+"px";
@@ -6072,7 +6160,7 @@ function saveAiStore(){
 loadAiStore();
 
 var AI_GUIDE=[
-  "你在「无限画布 · AI 漫剧工作台」里担任创作助手，用户是漫剧导演/编剧/美术。",
+  "你在「镜界 · Mirrorboard」里担任创作助手，用户是漫剧导演/编剧/美术。",
   "职责：1) 给创作灵感（剧情钩子、分镜、画面、镜头、配乐）；2) 把用户的想法翻译成画布节点的具体参数；3) 解答画布用法。",
   "画布知识（必须准确）：",
   "- 节点：文本、图片、视频、音频（纯素材节点，只能上传或从素材库选择，不调用模型）、图像生成、图生视频、音频生成、合成导出、上传素材。",
@@ -6650,7 +6738,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.3.6";
+var canvasApiVersion="1.3.7";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

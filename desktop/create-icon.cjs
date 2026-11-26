@@ -2,6 +2,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
 
+// 已提供设计好的图标（desktop/icon.ico）时直接复用，不再用代码临时绘制
+const packagedIcon = path.join(__dirname, "icon.ico");
+try {
+  if (fs.existsSync(packagedIcon) && fs.statSync(packagedIcon).size > 2048) {
+    process.exit(0);
+  }
+} catch {}
+
 const size = 256;
 const pixels = Buffer.alloc(size * size * 4);
 

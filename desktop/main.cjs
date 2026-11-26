@@ -862,7 +862,7 @@ async function handleRequest(request, response, port) {
     }
     const target = getProviderProxyTarget(requestUrl);
     if (!target) {
-      sendJson(response, 400, { error: { message: "音频接口地址无效" } });
+      sendJson(response, 400, { error: { message: "接口地址无效：请在「设置 → API 接入」检查 Base URL 是否为完整 https 地址" } });
       return;
     }
     await forwardProviderRequest(request, response, target);

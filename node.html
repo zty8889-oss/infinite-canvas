@@ -569,6 +569,7 @@
   .nd.image-node .preview-empty .media-label,.nd.image-node .preview-empty .media-copy{display:none}
   .nd.image-node .preview-empty.has-reference .media-glyph{display:none}
   .nd.image-node .sum{display:none}
+  .nd.upload-node .sum{display:none}
   .nd.image-node .image-trials{position:absolute;left:23px;bottom:22px;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
   .nd.image-node .image-trials-label{color:#85878e;font-size:11px}
   .nd.image-node .image-trial{display:inline-flex;align-items:center;gap:7px;padding:3px 8px;border:0;border-radius:5px;
@@ -1139,11 +1140,13 @@
   .img-preview .ip-stage.dragging{cursor:grabbing}
   .img-preview .ip-stage img{max-width:92vw;max-height:80vh;transform-origin:center center;
     transition:transform .06s ease-out;user-select:none;-webkit-user-drag:none;border-radius:6px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
-  .nd .ft .preview{width:26px;height:26px;padding:0;border:1px solid #34363c;border-radius:50%;background:#1b1c21;
-    color:#b9bec7;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px}
-  .nd .ft .preview:hover{background:#26282e;color:#fff;border-color:#4a4d55}
-  .nd .ft .preview svg{width:14px;height:14px}
-  body.canvas-light .nd .ft .preview{background:#eef2f7;border-color:#dbe0e6;color:#4a5563}
+  .nd .ft .prov{margin-left:auto;padding-right:28px}
+  .nd .media-preview-btn{position:absolute;right:10px;bottom:8px;z-index:6;width:24px;height:24px;padding:0;border:1px solid #3a3c43;
+    border-radius:7px;background:rgba(24,26,31,.9);color:#c6cbd3;display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;opacity:.9;transition:opacity .12s,background .12s}
+  .nd .media-preview-btn:hover{background:#2b2d33;color:#fff;border-color:#4a4d55;opacity:1}
+  .nd .media-preview-btn svg{width:13px;height:13px}
+  body.canvas-light .nd .media-preview-btn{background:rgba(238,242,247,.95);border-color:#dbe0e6;color:#4a5563}
 
   /* ---- 浅色画布（放在最后才盖得住组件样式） ---- */
   body.canvas-light #viewport{background-color:#eef1f5!important;background-image:
@@ -1154,7 +1157,7 @@
   body.canvas-light #edges path.wire-flow{stroke:#5b93ad!important;opacity:.35!important;filter:none!important}
   body.canvas-light .nd-shell{background:#ffffff!important;border-color:#d7dce3!important;
     box-shadow:0 10px 26px rgba(15,23,42,.1)!important}
-  body.canvas-light .nd .preview{background:radial-gradient(circle at 50% 44%,#ffffff 0,#f1f4f8 64%)!important}
+  body.canvas-light .nd .media-preview-btn{background:radial-gradient(circle at 50% 44%,#ffffff 0,#f1f4f8 64%)!important}
   body.canvas-light .nd .preview-empty .media-label{color:#6b7480!important}
   body.canvas-light .nd .preview-empty .media-copy{color:#8a939d!important}
   body.canvas-light .nd .preview-empty .media-glyph{background:#e8edf3!important;color:#9aa4b0!important}
@@ -2809,7 +2812,7 @@ function primaryFieldFor(n){
 function promptGlyph(kind){return kind==="video"?"▶":kind==="audio"?"≋":kind==="image"?"✦":"¶";}
 function nodeEl(n){
   var dt=NODETYPES[n.type]||{label:n.type,icon:"⬛",color:"#64748b",kind:"any"};
-  var c=el("div","nd"+(n.type==="image"?" image-node":"")+(n.collapsed?" collapsed":"")+(n.params&&n.params._marked?" marked":"")+(n.status==="running"?" running":"")+(selectedIds.indexOf(n.id)>=0?" multi-selected":""));c.dataset.id=n.id;
+  var c=el("div","nd"+(n.type==="image"?" image-node":"")+(n.type==="upload"?" upload-node":"")+(n.collapsed?" collapsed":"")+(n.params&&n.params._marked?" marked":"")+(n.status==="running"?" running":"")+(selectedIds.indexOf(n.id)>=0?" multi-selected":""));c.dataset.id=n.id;
   c.style.left=n.x+"px";c.style.top=n.y+"px";
   c.style.width=(n.w||280)+"px";c.style.height=(n.h||300)+"px";
   var hd=el("div","hd");
@@ -2892,12 +2895,12 @@ function nodeEl(n){
       if(previewUrl)previewList.push({url:previewUrl,title:n.title||"图片"});
     }
     if(previewList.length){
-      var previewBtn=el("button","preview");previewBtn.type="button";previewBtn.title="预览图片";
+      var previewBtn=el("button","media-preview-btn");previewBtn.type="button";previewBtn.title="预览图片";
       previewBtn.setAttribute("aria-label","预览图片");
       previewBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/><path d="M11 8.5v5M8.5 11h5"/></svg>';
       previewBtn.addEventListener("pointerdown",function(e){e.stopPropagation();});
       previewBtn.addEventListener("click",function(e){e.stopPropagation();openImagePreview(previewList,0);});
-      ft.appendChild(previewBtn);
+      c.appendChild(previewBtn);
     }
   }
   var run=el("button","run");run.textContent=n.status==="running"?"…":"▶";
@@ -2991,7 +2994,19 @@ function renderResult(box,n){
     var images=Array.isArray(o.images)?o.images.filter(function(item){return item&&(item.url||item.b64);}):[o];
     function imageSource(item){if(item.url)return item.url;return /^data:/i.test(item.b64||"")?item.b64:"data:image/png;base64,"+(item.b64||"");}
     var previewList=images.map(function(item,index){return {url:safeMediaUrl(imageSource(item)),title:(n.title||"图片")+(images.length>1?" "+(index+1):"")};}).filter(function(entry){return entry.url;});
+    var lastImageTap={key:"",at:0};
     function bindPreview(element,index){
+      element.style.cursor="zoom-in";
+      element.addEventListener("pointerdown",function(event){
+        if(event.button!==0)return;
+        var key=n.id+":"+index,now=Date.now();
+        if(lastImageTap.key===key&&now-lastImageTap.at<420){
+          lastImageTap={key:"",at:0};
+          if(previewList.length)openImagePreview(previewList,index);
+        }else{
+          lastImageTap={key:key,at:now};
+        }
+      });
       element.addEventListener("dblclick",function(event){event.preventDefault();event.stopPropagation();if(previewList.length)openImagePreview(previewList,index);});
     }
     if(images.length>1){var imageGrid=el("div","image-result-grid");images.forEach(function(item,index){var wrap=el("div","image-result-item"),im=el("img");im.src=imageSource(item);im.draggable=false;bindPreview(im,index);wrap.appendChild(im);var label=el("span");label.textContent="图片 "+(index+1);wrap.appendChild(label);imageGrid.appendChild(wrap);});box.appendChild(imageGrid);}
@@ -3162,6 +3177,7 @@ function onNodeDown(e){
     try{safeCapture(vp,e.pointerId);}catch(_){}
     return;
   }
+  if(e.target.closest(".res img")){e.stopPropagation();select(n.id);return;}
   if(e.target.closest(".run,.del,.col,.addchild,.res video,.res audio"))return;
   if(connectMode){e.stopPropagation();finishConnect(n.id);return;}
   e.stopPropagation();
@@ -4826,16 +4842,19 @@ function arrangeCanvasLayout(){
   if(!nodes.length)throw new Error("画布上没有可排列的节点");
   checkpoint();
   var byId={};nodes.forEach(function(n){byId[n.id]=n;});
-  var indegree={},outgoing={};
+  var indegree={},outgoing={},connected={};
   nodes.forEach(function(n){indegree[n.id]=0;outgoing[n.id]=[];});
   state.links.forEach(function(link){
     var from=byId[link.from],to=byId[link.to];
     if(!from||!to||from.id===to.id)return;
+    connected[from.id]=1;connected[to.id]=1;
     if(outgoing[from.id].indexOf(to.id)>=0)return;
     outgoing[from.id].push(to.id);
     indegree[to.id]=(indegree[to.id]||0)+1;
   });
-  var remaining={};nodes.forEach(function(n){remaining[n.id]=true;});
+  var linked=nodes.filter(function(n){return connected[n.id];});
+  var isolated=nodes.filter(function(n){return !connected[n.id];});
+  var remaining={};linked.forEach(function(n){remaining[n.id]=true;});
   var levels=[],guard=0;
   while(guard++<300){
     var layer=Object.keys(remaining).filter(function(id){return (indegree[id]||0)===0;});
@@ -4850,11 +4869,21 @@ function arrangeCanvasLayout(){
       outgoing[id].forEach(function(next){indegree[next]=(indegree[next]||1)-1;});
     });
   }
-  var rest=Object.keys(remaining).map(function(id){return byId[id];});
-  if(rest.length){
-    rest.sort(function(a,b){return (canvasTypeRank(a)-canvasTypeRank(b))||((a.y||0)-(b.y||0));});
-    levels.push(rest);
+  var leftover=Object.keys(remaining).map(function(id){return byId[id];});
+  if(leftover.length){
+    leftover.sort(function(a,b){return (canvasTypeRank(a)-canvasTypeRank(b))||((a.y||0)-(b.y||0));});
+    levels.push(leftover);
   }
+  // 没有连线的节点按类型各自成列，排在连线结构右侧
+  var buckets={};
+  isolated.forEach(function(n){
+    var rank=canvasTypeRank(n);
+    (buckets[rank]=buckets[rank]||[]).push(n);
+  });
+  Object.keys(buckets).sort(function(a,b){return Number(a)-Number(b);}).forEach(function(rank){
+    buckets[rank].sort(function(a,b){return (a.y||0)-(b.y||0)||((a.x||0)-(b.x||0));});
+    levels.push(buckets[rank]);
+  });
   var gapX=90,gapY=54,startX=140,startY=140,cursorX=startX;
   levels.forEach(function(layer){
     var columnWidth=0;
@@ -5777,7 +5806,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.3.9";
+var APP_VERSION="1.3.10";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -6774,7 +6803,7 @@ function openHelp(){
     '<li>按 <kbd>J</kbd> 进入连线模式：在节点任意位置按下并拖到目标节点即可连线；框选多个节点后，从其中任意一个拖出会把这些节点一起连到目标。</li></ul>'+
     '<h3>左下工具</h3><ul>'+
     '<li><b>素材库</b>：查看画布内的图片与视频，点选可定位；把文件拖进画布即可上传。</li>'+
-    '<li><b>整理</b>：按连线拓扑从左到右排列，保证连线完整；同一列按 文本 / 图片 / 视频 / 音频 / 图像生成 / 图生视频 / 音频生成 排序，可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
+    '<li><b>整理</b>：按连线拓扑从左到右分列，保证连线完整；没有连线的节点会单独成列，按 图片 / 视频 / 音频 / 图像生成 / 图生视频 / 音频生成 排序；可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
     '<li><b>地图</b>：显示小地图，点击地图可移动视口。</li>'+
     '<li><b>吸附</b>：拖动节点时吸附到其他节点边缘或中心。</li>'+
     '<li><b>连线</b>：显示或隐藏所有连接线。</li>'+
@@ -6980,7 +7009,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.3.9";
+var canvasApiVersion="1.3.10";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

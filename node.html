@@ -178,6 +178,9 @@
     border-radius:11px 11px 0 0;cursor:move}
   .nd .hd .ic{font-size:14px}
   .nd .hd .ti{font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nd .hd .hd-res{flex:0 0 auto;font-size:10.5px;font-weight:400;color:#8d939c;letter-spacing:.02em}
+  .nd.upload-node .prov{display:none}
+  body.canvas-light .nd .hd .hd-res{color:#7c8590}
   .nd .hd .st{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.55);flex:0 0 auto}
   .nd .hd .st.run{background:#fde047;animation:blink 1s infinite}
   .nd .hd .st.done{background:#4ade80}
@@ -2409,6 +2412,10 @@ function openImagePreview(list,index){
     function stopDrag(){previewState.dragging=false;stage.classList.remove("dragging");}
     stage.addEventListener("pointerup",stopDrag);
     stage.addEventListener("pointercancel",stopDrag);
+    stage.addEventListener("click",function(event){
+      if(event.target!==stage)return;
+      closeImagePreview();
+    });
     document.addEventListener("keydown",function(event){
       if(event.key==="Escape"&&imagePreviewEl&&imagePreviewEl.classList.contains("on"))closeImagePreview();
     });
@@ -2818,8 +2825,12 @@ function nodeEl(n){
   var hd=el("div","hd");
   hd.innerHTML='<span class="ic">'+dt.icon+'</span><span class="ti">'+esc(n.title||dt.label)+'</span>'+
     '<span class="st '+statusClass(n.status)+'"></span>';
-  var colb=el("button","col");colb.textContent=n.collapsed?"▸":"▾";colb.title="折叠/展开";
-  colb.setAttribute("aria-label","折叠或展开节点");
+  if(n.type==="upload"){
+    var hdRes=el("span","hd-res");
+    hdRes.textContent=n.mediaSize?(n.mediaSize.w+" × "+n.mediaSize.h):"";
+    hd.appendChild(hdRes);
+  }
+  var colb=el("button","col");colb.textContent=n.collapsed?"▸":"▾";colb.title="折叠/展开";  colb.setAttribute("aria-label","折叠或展开节点");
   colb.addEventListener("pointerdown",function(e){e.stopPropagation();});
   colb.addEventListener("click",function(e){e.stopPropagation();checkpoint();n.collapsed=!n.collapsed;refresh(n);save();});
   hd.appendChild(colb);
@@ -3011,6 +3022,20 @@ function renderResult(box,n){
     }
     if(images.length>1){var imageGrid=el("div","image-result-grid");images.forEach(function(item,index){var wrap=el("div","image-result-item"),im=el("img");im.src=imageSource(item);im.draggable=false;bindPreview(im,index);wrap.appendChild(im);var label=el("span");label.textContent="图片 "+(index+1);wrap.appendChild(label);imageGrid.appendChild(wrap);});box.appendChild(imageGrid);}
     else if(images[0]){var im=el("img");im.src=imageSource(images[0]);im.draggable=false;bindPreview(im,0);box.appendChild(im);}
+    if(n.type==="upload"&&o.kind==="image"){
+      var measured=box.querySelector("img");
+      if(measured){
+        var applyResolution=function(){
+          if(!measured.naturalWidth||!measured.naturalHeight)return;
+          n.mediaSize={w:measured.naturalWidth,h:measured.naturalHeight};
+          var nodeBox=box.closest(".nd");
+          var resText=nodeBox&&nodeBox.querySelector(".hd-res");
+          if(resText)resText.textContent=n.mediaSize.w+" × "+n.mediaSize.h;
+          else setTimeout(function(){refresh(n);},0);
+        };
+        if(measured.complete)applyResolution();else measured.addEventListener("load",applyResolution);
+      }
+    }
   }
   else if(o.kind==="video"){
     var videos=Array.isArray(o.videos)?o.videos.filter(function(item){return item&&item.url;}):[];
@@ -3177,7 +3202,6 @@ function onNodeDown(e){
     try{safeCapture(vp,e.pointerId);}catch(_){}
     return;
   }
-  if(e.target.closest(".res img")){e.stopPropagation();select(n.id);return;}
   if(e.target.closest(".run,.del,.col,.addchild,.res video,.res audio"))return;
   if(connectMode){e.stopPropagation();finishConnect(n.id);return;}
   e.stopPropagation();
@@ -3552,6 +3576,7 @@ document.addEventListener("pointerdown",function(e){
    ========================================================================= */
 function openInspector(n){
   if(!n){closeInspector();return;}
+  if(n.type==="upload"){closeInspector();return;}
   var dt=NODETYPES[n.type]||{};
   var titleEl=document.getElementById("ins-title");
   titleEl.value=n.title||dt.label||n.type;
@@ -5806,7 +5831,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.3.10";
+var APP_VERSION="1.4.1";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -7009,7 +7034,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.3.10";
+var canvasApiVersion="1.4.1";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }

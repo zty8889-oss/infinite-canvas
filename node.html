@@ -1125,6 +1125,26 @@
   #helpModal kbd{font-family:inherit;font-size:11.5px;color:#dfe6f3;background:#24262c;border:1px solid #34363c;
     border-radius:5px;padding:1px 6px}
 
+  /* ---- 图片预览浮层 ---- */
+  .img-preview{position:fixed;inset:0;z-index:200;display:none;flex-direction:column;background:rgba(6,8,12,.92);
+    backdrop-filter:blur(4px)}
+  .img-preview.on{display:flex}
+  .img-preview .ip-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;color:#dfe3ea;font-size:12.5px}
+  .img-preview .ip-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .img-preview .ip-tools{display:flex;gap:6px}
+  .img-preview .ip-tools button,.img-preview .ip-close{height:28px;min-width:32px;padding:0 9px;border:1px solid #34363c;
+    border-radius:7px;background:#1c1e23;color:#cfd3da;font-size:12.5px;cursor:pointer}
+  .img-preview .ip-tools button:hover,.img-preview .ip-close:hover{background:#26282e;color:#fff}
+  .img-preview .ip-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:grab;touch-action:none}
+  .img-preview .ip-stage.dragging{cursor:grabbing}
+  .img-preview .ip-stage img{max-width:92vw;max-height:80vh;transform-origin:center center;
+    transition:transform .06s ease-out;user-select:none;-webkit-user-drag:none;border-radius:6px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  .nd .ft .preview{width:26px;height:26px;padding:0;border:1px solid #34363c;border-radius:50%;background:#1b1c21;
+    color:#b9bec7;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px}
+  .nd .ft .preview:hover{background:#26282e;color:#fff;border-color:#4a4d55}
+  .nd .ft .preview svg{width:14px;height:14px}
+  body.canvas-light .nd .ft .preview{background:#eef2f7;border-color:#dbe0e6;color:#4a5563}
+
   /* ---- 浅色画布（放在最后才盖得住组件样式） ---- */
   body.canvas-light #viewport{background-color:#eef1f5!important;background-image:
     radial-gradient(circle,rgba(30,41,59,.26) 1px,transparent 1.15px),
@@ -1473,7 +1493,7 @@ var NODETYPES={
       if(p.palette&&p.palette!=="auto")tags.push("配色："+presetPromptText("palette",p.palette));
       if(p.composition&&p.composition!=="auto")tags.push("构图："+presetPromptText("composition",p.composition));
       if(p.camera&&p.camera!=="auto")tags.push("镜头："+p.camera);
-      if(p.ratio)tags.push("画幅比例："+p.ratio);
+      if(p.ratio&&p.ratio!=="auto")tags.push("画幅比例："+p.ratio);
       if(p.resolution&&!(n.provider==="ark"&&/seedream[-_. ]?3/i.test(n.model||"")))tags.push("目标清晰度："+p.resolution);
       if(p.quality&&p.quality!=="standard")tags.push("画质："+({low:"低画质",high:"高画质",ultra:"超高画质",max:"极致画质"}[p.quality]||p.quality));
       if(p.background==="transparent")tags.push("透明背景");
@@ -2282,7 +2302,7 @@ function portPos(n,which){return {x:which==="in"?n.x:n.x+n.w,y:n.y+(n.collapsed?
 function applyMediaAspect(n){
   var mediaKind=n&&(n.type==="upload"?n.output&&n.output.kind:n.type);
   if(!n||!n.params||(mediaKind!=="image"&&mediaKind!=="video"))return;
-  var ratio=String(n.params.ratio||"16:9");if(ratio==="adaptive")ratio="16:9";
+  var ratio=String(n.params.ratio||"16:9");if(ratio==="adaptive"||ratio==="auto")ratio="16:9";
   var pair=ratio.split(":"),rw=Number(pair[0]),rh=Number(pair[1]);if(!rw||!rh)return;
   var aspect=rw/rh,maxEdge=mediaKind==="image"?620:420,frameW,frameH;
   if(aspect>=1){frameW=maxEdge;frameH=Math.round(maxEdge/aspect);}
@@ -2329,6 +2349,73 @@ function positionImageSettingsPopover(){
   imageSettingsPopover.style.left=left+"px";imageSettingsPopover.style.top=top+"px";
 }
 function closeImageSettings(){if(imageSettingsPopover)imageSettingsPopover.hidden=true;imageSettingsAnchor=null;}
+var imagePreviewEl=null,previewState={list:[],index:0,scale:1,minScale:0.2,maxScale:8,tx:0,ty:0,dragging:false,startX:0,startY:0};
+function applyPreviewTransform(){
+  if(!imagePreviewEl)return;
+  var img=imagePreviewEl.querySelector("img");
+  if(img)img.style.transform="translate("+previewState.tx+"px,"+previewState.ty+"px) scale("+previewState.scale+")";
+  var reset=imagePreviewEl.querySelector('[data-act="reset"]');
+  if(reset)reset.textContent=Math.round(previewState.scale*100)+"%";
+}
+function zoomPreview(factor){
+  previewState.scale=Math.max(previewState.minScale,Math.min(previewState.maxScale,previewState.scale*factor));
+  applyPreviewTransform();
+}
+function resetPreview(){previewState.scale=1;previewState.tx=0;previewState.ty=0;applyPreviewTransform();}
+function closeImagePreview(){
+  if(!imagePreviewEl)return;
+  imagePreviewEl.classList.remove("on");
+  previewState.list=[];previewState.index=0;previewState.scale=1;previewState.tx=0;previewState.ty=0;
+}
+function openImagePreview(list,index){
+  var items=(Array.isArray(list)?list:[]).filter(function(item){return item&&item.url;});
+  if(!items.length)return;
+  previewState.list=items;
+  previewState.index=Math.max(0,Math.min(items.length-1,index||0));
+  previewState.scale=1;previewState.tx=0;previewState.ty=0;previewState.dragging=false;
+  if(!imagePreviewEl){
+    imagePreviewEl=el("div","img-preview");
+    imagePreviewEl.innerHTML='<div class="ip-bar"><span class="ip-title"></span><span class="ip-tools">'+
+      '<button type="button" data-act="zoomout" title="缩小">−</button>'+
+      '<button type="button" data-act="reset" title="恢复 100%">100%</button>'+
+      '<button type="button" data-act="zoomin" title="放大">＋</button></span>'+
+      '<button class="ip-close" type="button" aria-label="关闭">×</button></div>'+
+      '<div class="ip-stage"><img alt=""></div>';
+    document.body.appendChild(imagePreviewEl);
+    imagePreviewEl.addEventListener("wheel",function(event){event.preventDefault();zoomPreview(event.deltaY<0?1.12:1/1.12);},{passive:false});
+    imagePreviewEl.querySelector(".ip-close").addEventListener("click",closeImagePreview);
+    imagePreviewEl.querySelector('[data-act="zoomin"]').addEventListener("click",function(){zoomPreview(1.2);});
+    imagePreviewEl.querySelector('[data-act="zoomout"]').addEventListener("click",function(){zoomPreview(1/1.2);});
+    imagePreviewEl.querySelector('[data-act="reset"]').addEventListener("click",resetPreview);
+    imagePreviewEl.addEventListener("click",function(event){if(event.target===imagePreviewEl)closeImagePreview();});
+    var stage=imagePreviewEl.querySelector(".ip-stage");
+    stage.addEventListener("pointerdown",function(event){
+      if(event.button!==0)return;
+      previewState.dragging=true;
+      previewState.startX=event.clientX-previewState.tx;
+      previewState.startY=event.clientY-previewState.ty;
+      stage.classList.add("dragging");
+      try{stage.setPointerCapture(event.pointerId);}catch(_){}
+    });
+    stage.addEventListener("pointermove",function(event){
+      if(!previewState.dragging)return;
+      previewState.tx=event.clientX-previewState.startX;
+      previewState.ty=event.clientY-previewState.startY;
+      applyPreviewTransform();
+    });
+    function stopDrag(){previewState.dragging=false;stage.classList.remove("dragging");}
+    stage.addEventListener("pointerup",stopDrag);
+    stage.addEventListener("pointercancel",stopDrag);
+    document.addEventListener("keydown",function(event){
+      if(event.key==="Escape"&&imagePreviewEl&&imagePreviewEl.classList.contains("on"))closeImagePreview();
+    });
+  }
+  imagePreviewEl.classList.add("on");
+  var current=items[previewState.index];
+  imagePreviewEl.querySelector(".ip-title").textContent=(current.title||"图片")+(items.length>1?"（"+(previewState.index+1)+"/"+items.length+"）":"");
+  imagePreviewEl.querySelector("img").src=current.url;
+  applyPreviewTransform();
+}
 function openImageSettings(anchor,n,onChange){
   if(!imageSettingsPopover){
     imageSettingsPopover=el("div","ie-image-popover");imageSettingsPopover.style.position="fixed";imageSettingsPopover.hidden=true;
@@ -2347,8 +2434,7 @@ function openImageSettings(anchor,n,onChange){
   var groups=[
     {key:"quality",label:"画质",items:[["low","低画质"],["standard","标准画质"],["high","高画质"],["ultra","超高画质"],["max","极致画质"]]},
     {key:"resolution",label:"清晰度",items:[["1K","1K"],["2K","2K"],["4K","4K"]]},
-    {key:"background",label:"背景",items:[["auto","自动"],["opaque","保留背景"],["transparent","透明背景"]]},
-    {key:"ratio",label:"比例",items:[["1:1","1:1"],["1:2","1:2"],["2:1","2:1"],["9:16","9:16"],["16:9","16:9"],["3:4","3:4"],["4:3","4:3"],["3:2","3:2"],["2:3","2:3"],["5:4","5:4"],["4:5","4:5"],["21:9","21:9"],["9:21","9:21"]]},
+    {key:"ratio",label:"比例",items:[["auto","自适应"],["1:1","1:1"],["1:2","1:2"],["2:1","2:1"],["9:16","9:16"],["16:9","16:9"],["3:4","3:4"],["4:3","4:3"],["3:2","3:2"],["2:3","2:3"],["5:4","5:4"],["4:5","4:5"],["21:9","21:9"],["9:21","9:21"]]},
     {key:"count",label:"生成数量",items:[[1,"1张"],[2,"2张"],[4,"4张"]]}
   ];
   groups.forEach(function(group){
@@ -2734,11 +2820,17 @@ function nodeEl(n){
   colb.addEventListener("pointerdown",function(e){e.stopPropagation();});
   colb.addEventListener("click",function(e){e.stopPropagation();checkpoint();n.collapsed=!n.collapsed;refresh(n);save();});
   hd.appendChild(colb);
-  var rerun=el("button","act rerun");rerun.type="button";rerun.title="重新生成";rerun.setAttribute("aria-label","重新生成");
+  var rerun=el("button","act rerun");rerun.type="button";rerun.title="刷新素材";rerun.setAttribute("aria-label","刷新素材");
   rerun.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>';
-  rerun.disabled=n.status==="running"||n.type==="upload";
   rerun.addEventListener("pointerdown",function(e){e.stopPropagation();});
-  rerun.addEventListener("click",function(e){e.stopPropagation();if(n.status==="running")return;runNode(n.id);});
+  rerun.addEventListener("click",function(e){
+    e.stopPropagation();
+    var output=n.output||{};
+    var hasMedia=!!(output.url||output.b64||(Array.isArray(output.images)&&output.images.length)||(Array.isArray(output.videos)&&output.videos.length));
+    if(!hasMedia){toast("这个节点还没有可刷新的图片或视频素材");return;}
+    refresh(n);
+    toast("已刷新节点素材");
+  });
   hd.appendChild(rerun);
   var del=el("button","act del");del.type="button";del.title="删除节点";del.setAttribute("aria-label","删除节点");
   del.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6.5 7 7.6 20h8.8L17.5 7"/></svg>';
@@ -2790,6 +2882,24 @@ function nodeEl(n){
   bd.appendChild(preview);shell.appendChild(bd);
 
   var ft=el("div","ft");
+  var footerOutput=n.output||{};
+  if(footerOutput.kind==="image"){
+    var previewList=[];
+    if(Array.isArray(footerOutput.images)&&footerOutput.images.length){
+      footerOutput.images.forEach(function(item,index){var url=safeMediaUrl(mediaDataUrl(item));if(url)previewList.push({url:url,title:(n.title||"图片")+" "+(index+1)});});
+    }else{
+      var previewUrl=safeMediaUrl(mediaDataUrl(footerOutput));
+      if(previewUrl)previewList.push({url:previewUrl,title:n.title||"图片"});
+    }
+    if(previewList.length){
+      var previewBtn=el("button","preview");previewBtn.type="button";previewBtn.title="预览图片";
+      previewBtn.setAttribute("aria-label","预览图片");
+      previewBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/><path d="M11 8.5v5M8.5 11h5"/></svg>';
+      previewBtn.addEventListener("pointerdown",function(e){e.stopPropagation();});
+      previewBtn.addEventListener("click",function(e){e.stopPropagation();openImagePreview(previewList,0);});
+      ft.appendChild(previewBtn);
+    }
+  }
   var run=el("button","run");run.textContent=n.status==="running"?"…":"▶";
   run.title=n.status==="running"?"节点运行中":"运行此节点";run.setAttribute("aria-label",run.title);
   run.disabled=n.status==="running"||n.type==="upload";
@@ -2880,8 +2990,12 @@ function renderResult(box,n){
   if(o.kind==="image"&&(o.url||o.b64||o.images)){
     var images=Array.isArray(o.images)?o.images.filter(function(item){return item&&(item.url||item.b64);}):[o];
     function imageSource(item){if(item.url)return item.url;return /^data:/i.test(item.b64||"")?item.b64:"data:image/png;base64,"+(item.b64||"");}
-    if(images.length>1){var imageGrid=el("div","image-result-grid");images.forEach(function(item,index){var wrap=el("div","image-result-item"),im=el("img");im.src=imageSource(item);im.draggable=false;wrap.appendChild(im);var label=el("span");label.textContent="图片 "+(index+1);wrap.appendChild(label);imageGrid.appendChild(wrap);});box.appendChild(imageGrid);}
-    else if(images[0]){var im=el("img");im.src=imageSource(images[0]);im.draggable=false;box.appendChild(im);}
+    var previewList=images.map(function(item,index){return {url:safeMediaUrl(imageSource(item)),title:(n.title||"图片")+(images.length>1?" "+(index+1):"")};}).filter(function(entry){return entry.url;});
+    function bindPreview(element,index){
+      element.addEventListener("dblclick",function(event){event.preventDefault();event.stopPropagation();if(previewList.length)openImagePreview(previewList,index);});
+    }
+    if(images.length>1){var imageGrid=el("div","image-result-grid");images.forEach(function(item,index){var wrap=el("div","image-result-item"),im=el("img");im.src=imageSource(item);im.draggable=false;bindPreview(im,index);wrap.appendChild(im);var label=el("span");label.textContent="图片 "+(index+1);wrap.appendChild(label);imageGrid.appendChild(wrap);});box.appendChild(imageGrid);}
+    else if(images[0]){var im=el("img");im.src=imageSource(images[0]);im.draggable=false;bindPreview(im,0);box.appendChild(im);}
   }
   else if(o.kind==="video"){
     var videos=Array.isArray(o.videos)?o.videos.filter(function(item){return item&&item.url;}):[];
@@ -3851,7 +3965,7 @@ function openInspector(n){
   if(n.params.ratio!==undefined){
     if(n.type==="image"){
       var imageSummary=el("button","ie-chip ie-image-summary");imageSummary.type="button";imageSummary.title="图片生成参数";controls.appendChild(imageSummary);
-      updateImageSummary=function(){var qualityLabel={low:"低画质",standard:"标准画质",high:"高画质",ultra:"超高画质",max:"极致画质"}[n.params.quality||"standard"];imageSummary.textContent=(n.params.ratio||"16:9")+" · "+qualityLabel+" · "+(n.params.resolution||"2K")+" · "+(n.params.count||1)+"张";};
+      updateImageSummary=function(){var qualityLabel={low:"低画质",standard:"标准画质",high:"高画质",ultra:"超高画质",max:"极致画质"}[n.params.quality||"standard"];var ratioLabel=n.params.ratio==="auto"?"自适应":(n.params.ratio||"16:9");imageSummary.textContent=ratioLabel+" · "+qualityLabel+" · "+(n.params.resolution||"2K")+" · "+(n.params.count||1)+"张";};
       updateImageSummary();imageSummary.addEventListener("click",function(){openImageSettings(imageSummary,n,updateImageSummary);});
     }else if(n.type==="video"){
       var summaryChip=el("button","ie-chip video-summary");summaryChip.type="button";summaryChip.title="图生视频参数";controls.appendChild(summaryChip);
@@ -4695,6 +4809,66 @@ function exportFlow(){
   var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="workflow-"+new Date().toISOString().slice(0,10)+".json";a.click();
   toast("已导出工作流（不含Key）");
+}
+function canvasTypeRank(n){
+  if(!n)return 99;
+  if(n.type==="upload"){
+    var mediaKind=n.params&&n.params.mediaKind;
+    if(mediaKind==="video")return 2;
+    if(mediaKind==="audio")return 3;
+    return 1;
+  }
+  var order={text:0,script:0,charview:0,storyboard:0,scene:0,image:4,video:5,audio:6,compose:7};
+  return order[n.type]===undefined?8:order[n.type];
+}
+function arrangeCanvasLayout(){
+  var nodes=state.nodes.filter(function(n){return n.type!=="group";});
+  if(!nodes.length)throw new Error("画布上没有可排列的节点");
+  checkpoint();
+  var byId={};nodes.forEach(function(n){byId[n.id]=n;});
+  var indegree={},outgoing={};
+  nodes.forEach(function(n){indegree[n.id]=0;outgoing[n.id]=[];});
+  state.links.forEach(function(link){
+    var from=byId[link.from],to=byId[link.to];
+    if(!from||!to||from.id===to.id)return;
+    if(outgoing[from.id].indexOf(to.id)>=0)return;
+    outgoing[from.id].push(to.id);
+    indegree[to.id]=(indegree[to.id]||0)+1;
+  });
+  var remaining={};nodes.forEach(function(n){remaining[n.id]=true;});
+  var levels=[],guard=0;
+  while(guard++<300){
+    var layer=Object.keys(remaining).filter(function(id){return (indegree[id]||0)===0;});
+    if(!layer.length)break;
+    layer.sort(function(a,b){
+      var na=byId[a],nb=byId[b];
+      return (canvasTypeRank(na)-canvasTypeRank(nb))||((na.y||0)-(nb.y||0))||((na.x||0)-(nb.x||0));
+    });
+    levels.push(layer.map(function(id){return byId[id];}));
+    layer.forEach(function(id){
+      delete remaining[id];
+      outgoing[id].forEach(function(next){indegree[next]=(indegree[next]||1)-1;});
+    });
+  }
+  var rest=Object.keys(remaining).map(function(id){return byId[id];});
+  if(rest.length){
+    rest.sort(function(a,b){return (canvasTypeRank(a)-canvasTypeRank(b))||((a.y||0)-(b.y||0));});
+    levels.push(rest);
+  }
+  var gapX=90,gapY=54,startX=140,startY=140,cursorX=startX;
+  levels.forEach(function(layer){
+    var columnWidth=0;
+    layer.forEach(function(n){columnWidth=Math.max(columnWidth,n.w||240);});
+    var cursorY=startY;
+    layer.forEach(function(n){
+      n.x=Math.round(cursorX);
+      n.y=Math.round(cursorY);
+      cursorY+=(n.h||200)+gapY;
+    });
+    cursorX+=columnWidth+gapX;
+  });
+  renderAll();fitView();save();
+  return {levels:levels.length,nodes:nodes.length};
 }
 function fitView(){
   if(!state.nodes.length){state.view={x:0,y:0,s:1};applyView();return;}
@@ -5603,7 +5777,7 @@ loadPresetStore();
 /* =========================================================================
    11.6) 画布列表 / 设置 / 帮助（v4.5）
    ========================================================================= */
-var APP_VERSION="1.3.8";
+var APP_VERSION="1.3.9";
 var CANVAS_LIST_KEY="ic-canvases-v1";
 var canvasBook={current:"",items:[]};
 var canvasDiskTimer=0;
@@ -6593,13 +6767,14 @@ function openHelp(){
     '<h3>画布与节点</h3><ul>'+
     '<li>双击空白处或按 <kbd>/</kbd> 打开节点菜单；右键画布可上传素材、添加节点、撤销重做、复制粘贴。</li>'+
     '<li>从节点右侧圆点拖出连线，松手落在目标节点任意位置即可连接；落在空白处会弹出节点菜单并自动连线。</li>'+
-    '<li>选中节点后下方出现编辑器，可填写提示词与参数；节点标题栏有重新生成与删除按钮。</li>'+
+    '<li>选中节点后下方出现编辑器，可填写提示词与参数；节点标题栏的 ↻ 用来刷新节点里的图片/视频，🗑 删除节点。</li>'+
+    '<li>图片节点与图像生成节点：双击图片可放大预览，滚轮缩放、按住拖动平移，Esc 关闭；节点左下角的放大镜按钮效果相同。</li>'+
     '<li>滚轮上下平移，<kbd>Ctrl</kbd> + 滚轮缩放，<kbd>Shift</kbd> + 滚轮横向平移。</li>'+
     '<li>双击一条连线可直接删除；按住 <kbd>Y</kbd> 鼠标变成剪刀，按住左键划过连线可批量切断，松开结束。</li>'+
     '<li>按 <kbd>J</kbd> 进入连线模式：在节点任意位置按下并拖到目标节点即可连线；框选多个节点后，从其中任意一个拖出会把这些节点一起连到目标。</li></ul>'+
     '<h3>左下工具</h3><ul>'+
     '<li><b>素材库</b>：查看画布内的图片与视频，点选可定位；把文件拖进画布即可上传。</li>'+
-    '<li><b>整理</b>：按连线顺序自动分层排布并居中，可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
+    '<li><b>整理</b>：按连线拓扑从左到右排列，保证连线完整；同一列按 文本 / 图片 / 视频 / 音频 / 图像生成 / 图生视频 / 音频生成 排序，可用 <kbd>Ctrl+Z</kbd> 撤销。</li>'+
     '<li><b>地图</b>：显示小地图，点击地图可移动视口。</li>'+
     '<li><b>吸附</b>：拖动节点时吸附到其他节点边缘或中心。</li>'+
     '<li><b>连线</b>：显示或隐藏所有连接线。</li>'+
@@ -6805,7 +6980,7 @@ updateCanvasLabel();
    并给出自描述清单便于 Agent 发现能力。所有写操作都经过 checkpoint()，
    外部改动同样可以 Ctrl+Z 撤销；每次写入会派发 infinitecanvas:change 事件。
    ========================================================================= */
-var canvasApiVersion="1.3.8";
+var canvasApiVersion="1.3.9";
 function canvasNodeSummary(n){
   return {id:n.id,type:n.type,title:n.title||"",x:Math.round(n.x),y:Math.round(n.y),w:Math.round(n.w||0),h:Math.round(n.h||0),status:n.status||"idle",provider:n.provider||"",model:n.model||""};
 }
@@ -6917,12 +7092,10 @@ var canvasTools=[
   canvasTool("selectNodes","选中节点","设置当前选择集。",{ids:"节点 ID 数组"},function(a){
     selectMultiple(Array.isArray(a.ids)?a.ids:[]);return {selected:selectedIds.slice()};
   }),
-  canvasTool("arrangeCanvas","自动整理","按拓扑层级把节点排成左→右的分层网格。",{},function(){
-    var order=topoSort();if(!order.length)throw new Error("画布上没有可排列的节点");
-    checkpoint();var levels=levelize(order);
-    levels.forEach(function(list,li){list.forEach(function(n,ri){n.x=120+li*440;n.y=140+ri*380;});});
-    renderAll();save();canvasNotify("arrangeCanvas",{levels:levels.length});
-    return {levels:levels.length,nodes:order.length};
+  canvasTool("arrangeCanvas","自动整理","按连线拓扑从左到右排列；同层按 文本/图片/视频/音频/图像生成/图生视频/音频生成 排序，并保持连线完整。",{},function(){
+    var result=arrangeCanvasLayout();
+    canvasNotify("arrangeCanvas",{levels:result.levels});
+    return result;
   }),
   canvasTool("fitCanvas","适应视图","把全部节点缩放到可视区域内。",{},function(){fitView();return {view:{x:Math.round(state.view.x),y:Math.round(state.view.y),scale:Number(state.view.s.toFixed(3))}};}),
   canvasTool("runNode","运行节点","异步触发节点生成，不等待结果；状态可用 getNode 查询。",{id:"节点 ID"},function(a){
